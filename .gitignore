@@ -3,8 +3,6 @@ __pycache__/
 *.pyc
 *.pyo
 .env
-backend/models/*.pth
-backend/models/*.pt
 node_modules/
 frontend/dist/
 .DS_Store
