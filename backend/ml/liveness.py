@@ -6,29 +6,44 @@ from ml.audio_utils import SAMPLE_RATE, preprocess
 
 
 def generate_challenge() -> dict:
-    """Return a spoken-digit challenge for the caller."""
+    """
+    Generate a spoken-digit liveness challenge.
+
+    Note: this produces a prompt only. Verifying that the caller
+    actually spoke the correct digits requires speech recognition
+    (e.g. Whisper) — not yet integrated. The liveness SCORE below
+    is based on acoustic properties of the response audio, not on
+    content matching.
+    """
     digits = [random.randint(0, 9) for _ in range(4)]
     return {
         "challenge_id": str(uuid.uuid4())[:8],
         "prompt": f"Please say the following digits: {', '.join(map(str, digits))}",
         "digits": digits,
+        "note": "Content verification requires ASR — not yet integrated.",
     }
 
 
 def score_liveness(audio: np.ndarray) -> float:
     """
-    Layer 5: liveness detection heuristics.
-    Checks pitch jitter, noise floor, and syllabic AM depth.
-    Returns spoof probability in [0, 1]; higher = more likely not live.
+    Layer 5: acoustic liveness heuristics.
+
+    Checks three properties that distinguish a live microphone recording
+    from a synthesised or replayed audio stream:
+
+      1. Pitch jitter  — live voices have natural cycle-to-cycle F0 variation.
+      2. Noise floor   — real microphones always have a low-level noise floor;
+                         purely synthetic audio is often suspiciously clean.
+      3. Syllabic AM   — natural speech has strong amplitude modulation from
+                         the breath-syllable rhythm; flat envelopes are suspicious.
+
+    Returns spoof probability in [0, 1].  Higher = more likely NOT a live human.
     """
     audio = preprocess(audio)
     sr = SAMPLE_RATE
-
-    weighted_scores: list[tuple[float, float]] = []  # (score, weight)
+    weighted_scores: list[tuple[float, float]] = []
 
     # ── Pitch jitter ─────────────────────────────────────────────────────────
-    # Live voice has natural cycle-to-cycle F0 variation (~1-3%).
-    # Synthesised / replayed audio often has lower jitter.
     try:
         f0 = librosa.yin(audio, fmin=50, fmax=500, sr=sr,
                          frame_length=2048, hop_length=256)
@@ -42,19 +57,14 @@ def score_liveness(audio: np.ndarray) -> float:
         pass
 
     # ── Noise floor ──────────────────────────────────────────────────────────
-    # Real microphone recordings have a consistent low-level noise floor.
-    # Purely synthesised audio often lacks this; replayed audio varies.
     rms = librosa.feature.rms(y=audio, frame_length=512, hop_length=160)[0]
     n_quiet = max(len(rms) // 10, 5)
     noise_floor = float(np.mean(np.sort(rms)[:n_quiet]))
-    # Floor in [5e-4, 5e-3] is realistic for a live mic recording.
-    # Below 5e-5 -> suspiciously clean.
+    # Realistic mic noise floor: 5e-4 to 5e-3. Below 5e-5 = suspiciously clean.
     nf_score = float(np.clip(1.0 - noise_floor / 5e-4, 0.0, 1.0))
     weighted_scores.append((nf_score, 0.30))
 
     # ── Syllabic AM depth ────────────────────────────────────────────────────
-    # Natural speech has strong amplitude modulation from syllable rhythm.
-    # Too-flat envelope (low std/mean) = synthesiser or replay artefact.
     envelope = librosa.feature.rms(y=audio, frame_length=2048, hop_length=512)[0]
     am_depth = float(np.std(envelope) / (np.mean(envelope) + 1e-8))
     # am_depth >= 0.40 -> score 0 (natural), am_depth <= 0.10 -> score 1

@@ -1,12 +1,14 @@
 import numpy as np
 
-# Calibrated layer weights — AASIST carries most signal
+# AASIST is the only trained classifier in the pipeline;
+# layers 2-5 are signal-processing heuristics that provide supporting signal.
+# Weights reflect that disparity honestly.
 WEIGHTS = {
-    "aasist":   0.40,
-    "mfcc":     0.15,
-    "breath":   0.15,
-    "phase":    0.15,
-    "liveness": 0.15,
+    "aasist":   0.60,
+    "mfcc":     0.10,
+    "breath":   0.10,
+    "phase":    0.10,
+    "liveness": 0.10,
 }
 
 
