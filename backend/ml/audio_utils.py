@@ -16,12 +16,19 @@ def load_audio(path: str, sr: int = SAMPLE_RATE) -> Tuple[np.ndarray, int]:
 
 def load_audio_bytes(data: bytes, sr: int = SAMPLE_RATE) -> Tuple[np.ndarray, int]:
     buf = io.BytesIO(data)
-    audio, orig_sr = sf.read(buf, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio.mean(axis=1)
-    if orig_sr != sr:
-        audio = librosa.resample(audio, orig_sr=orig_sr, target_sr=sr)
-    return audio.astype(np.float32), sr
+    try:
+        audio, orig_sr = sf.read(buf, dtype="float32")
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1)
+        if orig_sr != sr:
+            audio = librosa.resample(audio, orig_sr=orig_sr, target_sr=sr)
+        return audio.astype(np.float32), sr
+    except Exception:
+        buf.seek(0)
+        audio, orig_sr = librosa.load(buf, sr=None, mono=True)
+        if orig_sr != sr:
+            audio = librosa.resample(audio, orig_sr=orig_sr, target_sr=sr)
+        return audio.astype(np.float32), sr
 
 
 def normalize(audio: np.ndarray) -> np.ndarray:
