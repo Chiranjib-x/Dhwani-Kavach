@@ -34,14 +34,13 @@ def _score_chunk(model, chunk: np.ndarray) -> dict:
     }
 
 
-def detect_audio(audio_bytes: bytes) -> dict:
+def detect_samples(audio: np.ndarray) -> dict:
     """
-    Run all 5 layers across the whole recording, not just its first 4s.
+    Run all 5 layers across a decoded waveform, not just its first 4s.
     Audio is split into ~4s chunks; the highest-risk chunk drives the verdict
     (a deepfake anywhere in the call is a deepfake). Returns dict with
     risk_score (0-100), alert_level, and layer_breakdown of that worst chunk.
     """
-    audio, _ = load_audio_bytes(audio_bytes)
     model = _get_model()
 
     chunks = chunk_audio(audio)
@@ -54,3 +53,9 @@ def detect_audio(audio_bytes: bytes) -> dict:
     result = compute_ensemble(worst)
     result["layer_breakdown"] = {k: int(round(v * 100)) for k, v in worst.items()}
     return result
+
+
+def detect_audio(audio_bytes: bytes) -> dict:
+    """Decode encoded audio bytes (wav/mp3/…) then score the whole recording."""
+    audio, _ = load_audio_bytes(audio_bytes)
+    return detect_samples(audio)
