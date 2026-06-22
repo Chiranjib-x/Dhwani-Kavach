@@ -42,6 +42,18 @@ def pad_or_trim(audio: np.ndarray, length: int = CHUNK_SAMPLES) -> np.ndarray:
     return audio[:length]
 
 
+def repeat_pad(audio: np.ndarray, length: int = CHUNK_SAMPLES) -> np.ndarray:
+    """Tile to `length` instead of zero-padding — the ASVspoof/AASIST convention.
+    Feeding the trained model repeated speech (not appended silence) keeps short
+    clips inside the distribution it was trained on."""
+    if len(audio) == 0:
+        return np.zeros(length, dtype=np.float32)
+    if len(audio) >= length:
+        return audio[:length].astype(np.float32)
+    reps = -(-length // len(audio))  # ceil
+    return np.tile(audio, reps)[:length].astype(np.float32)
+
+
 def chunk_audio(
     audio: np.ndarray,
     chunk_samples: int = CHUNK_SAMPLES,

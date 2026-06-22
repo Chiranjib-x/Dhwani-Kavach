@@ -8,7 +8,7 @@ import io
 
 from ml.audio_utils import (
     SAMPLE_RATE, CHUNK_SAMPLES,
-    load_audio_bytes, normalize, pad_or_trim, chunk_audio, preprocess,
+    load_audio_bytes, normalize, pad_or_trim, repeat_pad, chunk_audio, preprocess,
 )
 from ml.spectrogram import mel_spectrogram, mfcc_features, to_tensor, waveform_to_tensor
 
@@ -58,6 +58,15 @@ def test_chunk_audio_short():
     chunks = chunk_audio(audio)
     assert len(chunks) == 1 and len(chunks[0]) == CHUNK_SAMPLES
     print("  [OK] chunk_audio (short audio -> 1 padded chunk)")
+
+
+def test_repeat_pad():
+    a = np.array([1, 2, 3], dtype=np.float32)
+    out = repeat_pad(a, 7)
+    assert len(out) == 7
+    assert np.array_equal(out, [1, 2, 3, 1, 2, 3, 1]), out  # tiled, not zero-filled
+    assert len(repeat_pad(np.array([], dtype=np.float32), 5)) == 5  # empty -> zeros, no crash
+    print("  [OK] repeat_pad tiles to length")
 
 
 def test_load_audio_bytes():
@@ -120,6 +129,7 @@ if __name__ == "__main__":
         test_normalize,
         test_pad_or_trim_pad,
         test_pad_or_trim_trim,
+        test_repeat_pad,
         test_chunk_audio,
         test_chunk_audio_short,
         test_load_audio_bytes,

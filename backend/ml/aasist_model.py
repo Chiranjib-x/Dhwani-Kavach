@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from ml.audio_utils import SAMPLE_RATE, CHUNK_SAMPLES, preprocess
+from ml.audio_utils import repeat_pad
 
 
 # ── Sinc filter bank (no learnable params -> not in checkpoint) ──────────────
@@ -296,7 +296,8 @@ def load_aasist(model_path: str, device: str = "cpu") -> AASISTModel:
 
 def infer(model: AASISTModel, audio: np.ndarray, device: str = "cpu") -> float:
     """Return spoof probability in [0, 1]; higher = more likely fake."""
-    audio = preprocess(audio)
+    # Match training: raw waveform, repeat-padded to length, NOT peak-normalized.
+    audio = repeat_pad(audio)
     x = torch.from_numpy(audio).unsqueeze(0).to(device)  # (1, 64000)
     model.eval()
     with torch.no_grad():
