@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from ml.detector import detect_audio
 
@@ -15,7 +17,13 @@ async def ws_analyze(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_bytes()
-            result = detect_audio(data)
+            try:
+                # CPU-bound — off the event loop so other connections aren't blocked.
+                result = await asyncio.to_thread(detect_audio, data)
+            except Exception as exc:
+                # One malformed chunk shouldn't tear down the whole stream.
+                await websocket.send_json({"error": str(exc)})
+                continue
             await websocket.send_json(result)
     except WebSocketDisconnect:
         pass
