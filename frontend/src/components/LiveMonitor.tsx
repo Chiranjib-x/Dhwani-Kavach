@@ -1,0 +1,216 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { useWebSocket } from "@/hooks/use-websocket"
+import { useMicStream } from "@/hooks/use-mic-stream"
+import { decodeTo16kMono, streamPcm, TARGET_SR } from "@/lib/audio-stream"
+
+const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000"
+const WS_URL = BACKEND.replace(/^http/, "ws") + "/ws/analyze"
+
+type AlertLevel = "GREEN" | "AMBER" | "RED"
+type Result = { risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number> }
+type WsMsg = Result | { error: string }
+type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer: string }
+
+const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.07)" }
+const LAYERS: [string, string][] = [["aasist", "AASIST"], ["mfcc", "Spectral Biometrics"], ["breath", "Breath Pattern"], ["phase", "Phase Coherence"], ["liveness", "Active Liveness"]]
+const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ? C.warn : l === "GREEN" ? C.ok : C.muted)
+
+function topLayer(b: Record<string, number>): string {
+  let best = "", bv = -1
+  for (const [k, label] of LAYERS) { const v = b[k] ?? 0; if (v > bv) { bv = v; best = label } }
+  return best
+}
+
+export default function LiveMonitor() {
+  const [result, setResult] = useState<Result | null>(null)
+  const [mode, setMode] = useState<"idle" | "file" | "mic">("idle")
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const stopVisualRef = useRef<(() => void) | null>(null)
+  const seq = useRef(0)
+
+  const onMessage = useCallback((msg: WsMsg) => {
+    if ("error" in msg) { setError(msg.error); return }
+    setResult(msg)
+    setAlerts((a) => [{ id: ++seq.current, time: new Date().toLocaleTimeString(), risk: msg.risk_score, level: msg.alert_level, layer: topLayer(msg.layer_breakdown) }, ...a].slice(0, 12))
+  }, [])
+  const { status, send, reconnect } = useWebSocket<WsMsg>(WS_URL, onMessage)
+  const mic = useMicStream(send)
+
+  const cleanup = useCallback(() => {
+    stopVisualRef.current?.(); stopVisualRef.current = null
+    abortRef.current?.abort()
+    mic.stop()
+  }, [mic])
+  useEffect(() => cleanup, [cleanup])
+
+  const analyzeFile = useCallback(async (file: File) => {
+    cleanup(); setError(null); setResult(null); setFileName(file.name); setMode("file")
+    reconnect()
+    try {
+      const pcm = await decodeTo16kMono(file)
+      stopVisualRef.current = playAndVisualize(pcm, canvasRef.current)
+      abortRef.current = new AbortController()
+      await streamPcm(pcm, send, { signal: abortRef.current.signal })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setMode("idle")
+    }
+  }, [cleanup, reconnect, send])
+
+  const toggleMic = useCallback(async () => {
+    if (mode === "mic") { cleanup(); setMode("idle"); return }
+    cleanup(); setError(null); setResult(null); setMode("mic")
+    reconnect()
+    try {
+      const analyser = await mic.start()
+      stopVisualRef.current = renderSpectrogram(canvasRef.current, analyser)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e)); setMode("idle")
+    }
+  }, [mode, cleanup, reconnect, mic])
+
+  const risk = result?.risk_score ?? 0
+  const color = levelColor(result?.alert_level)
+  const R = 90, CIRC = Math.PI * R, pct = risk / 100
+
+  return (
+    <div className="rounded-2xl p-8 md:p-10" style={{ backgroundColor: C.surface, border: `1px solid ${C.faint}` }}>
+      {/* status + controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 font-mono text-[11px] tracking-wider" style={{ color: C.muted }}>
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: status === "open" ? C.ok : status === "connecting" ? C.cyan : C.threat }} />
+          {status === "open" ? "LIVE SOCKET CONNECTED" : status === "connecting" ? "CONNECTING…" : "DETECTOR OFFLINE"}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => inputRef.current?.click()} disabled={mode !== "idle"}
+            className="rounded-full px-4 py-2 text-[12px] font-medium transition-colors disabled:opacity-40"
+            style={{ border: `1px solid ${C.cyan}`, color: C.cyan, backgroundColor: "transparent" }}>
+            {mode === "file" ? `Streaming ${fileName ?? ""}…` : "Stream a file"}
+          </button>
+          <button onClick={toggleMic} disabled={mode === "file"}
+            className="rounded-full px-4 py-2 text-[12px] font-medium transition-colors disabled:opacity-40"
+            style={{ border: `1px solid ${mode === "mic" ? C.threat : C.cyan}`, color: mode === "mic" ? C.threat : C.cyan }}>
+            {mode === "mic" ? "■ Stop microphone" : "● Use microphone"}
+          </button>
+          <input ref={inputRef} type="file" accept=".wav,.mp3,.flac,.ogg,.webm,.m4a,audio/*" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) analyzeFile(f); e.target.value = "" }} />
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-8 md:grid-cols-2 items-center">
+        {/* live gauge */}
+        <div className="flex flex-col items-center">
+          <svg width="220" height="130" viewBox="0 0 220 130">
+            <path d={`M 20 110 A ${R} ${R} 0 0 1 200 110`} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" strokeLinecap="round" />
+            <path d={`M 20 110 A ${R} ${R} 0 0 1 200 110`} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+              strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct)} style={{ transition: "stroke-dashoffset 0.5s, stroke 0.4s" }} />
+          </svg>
+          <div className="-mt-6 text-center">
+            <div className="font-mono font-bold text-[56px] leading-none" style={{ color }}>{String(risk).padStart(2, "0")}</div>
+            <div className="mt-2 font-mono text-[11px] tracking-[0.2em]" style={{ color }}>
+              {result ? `${risk} / 100 · ${result.alert_level}` : mode !== "idle" ? "ANALYZING…" : "WAITING FOR AUDIO"}
+            </div>
+          </div>
+        </div>
+
+        {/* live spectrogram */}
+        <div>
+          <div className="font-mono text-[11px] tracking-wider mb-2" style={{ color: C.muted }}>LIVE SPECTROGRAM</div>
+          <canvas ref={canvasRef} width={512} height={150} className="w-full rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)" }} />
+          <div className="font-mono text-[10px] mt-2" style={{ color: C.muted }}>128-band · {TARGET_SR / 1000} kHz · 10s window, 5s hop</div>
+        </div>
+      </div>
+
+      {/* per-layer bars */}
+      <div className="mt-8 space-y-3">
+        {LAYERS.map(([key, name], i) => {
+          const score = result?.layer_breakdown[key] ?? 0
+          return (
+            <div key={key} className="grid grid-cols-[140px_1fr_36px] items-center gap-4">
+              <div className="text-[12px]" style={{ color: C.text }}>{name}</div>
+              <div className="h-[2px] w-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+                <motion.div animate={{ width: `${score}%` }} transition={{ duration: 0.5, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ height: "100%", backgroundColor: score >= 70 ? C.threat : score >= 40 ? C.warn : C.cyan }} />
+              </div>
+              <div className="font-mono text-[11px] text-right" style={{ color: C.muted }}>{score}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* alert history */}
+      <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${C.faint}` }}>
+        <div className="font-mono text-[11px] tracking-wider mb-3" style={{ color: C.muted }}>ALERT HISTORY</div>
+        <div className="max-h-48 overflow-y-auto space-y-1.5">
+          {alerts.length === 0 && <div className="font-mono text-[11px]" style={{ color: C.muted }}>No windows scored yet — stream a file or start the mic.</div>}
+          <AnimatePresence initial={false}>
+            {alerts.map((a) => (
+              <motion.div key={a.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
+                className="grid grid-cols-[80px_1fr_auto] items-center gap-3 font-mono text-[11px]" style={{ color: C.muted }}>
+                <span>{a.time}</span>
+                <span>call-{String(a.id).padStart(4, "0")} · {a.layer}</span>
+                <span style={{ color: levelColor(a.level) }}>{a.level} · {a.risk}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {error && <div className="mt-4 font-mono text-[11px]" style={{ color: C.threat }}>{error}</div>}
+    </div>
+  )
+}
+
+/** Scrolling 128-band spectrogram from a live AnalyserNode. Returns a stop fn. */
+function renderSpectrogram(canvas: HTMLCanvasElement | null, analyser: AnalyserNode | null): () => void {
+  if (!canvas || !analyser) return () => {}
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return () => {}
+  const w = canvas.width, h = canvas.height
+  ctx.clearRect(0, 0, w, h)
+  const bins = analyser.frequencyBinCount
+  const data = new Uint8Array(bins)
+  let raf = 0, stopped = false
+  const draw = () => {
+    if (stopped) return
+    raf = requestAnimationFrame(draw)
+    analyser.getByteFrequencyData(data)
+    const img = ctx.getImageData(1, 0, w - 1, h)
+    ctx.putImageData(img, 0, 0)
+    const colH = h / bins + 1
+    for (let i = 0; i < bins; i++) {
+      const v = data[i] / 255
+      ctx.fillStyle = `hsl(${175 - v * 120}, 80%, ${10 + v * 50}%)`
+      ctx.fillRect(w - 1, h - (i / bins) * h, 1, colH)
+    }
+  }
+  draw()
+  return () => { stopped = true; cancelAnimationFrame(raf) }
+}
+
+/** Play decoded PCM through an AnalyserNode and draw its spectrogram. Returns a stop fn. */
+function playAndVisualize(pcm: Float32Array, canvas: HTMLCanvasElement | null): () => void {
+  if (!canvas) return () => {}
+  const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  const ac = new AC()
+  const buffer = ac.createBuffer(1, pcm.length, TARGET_SR)
+  buffer.copyToChannel(new Float32Array(pcm), 0)  // fresh ArrayBuffer-backed copy (TS5.8 typed-array generics)
+  const src = ac.createBufferSource()
+  src.buffer = buffer
+  const analyser = ac.createAnalyser()
+  analyser.fftSize = 256
+  src.connect(analyser)
+  analyser.connect(ac.destination)
+  src.start()
+  const stopDraw = renderSpectrogram(canvas, analyser)
+  const stop = () => { stopDraw(); try { src.stop() } catch { /* already stopped */ } ; ac.close().catch(() => {}) }
+  src.onended = stop
+  return stop
+}
