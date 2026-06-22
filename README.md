@@ -37,9 +37,11 @@ Status legend: ✅ done · ⚠️ partial · ❌ not started.
 | **1B** Detection layers | AASIST + MFCC, breath, phase-coherence, liveness | ✅ |
 | **1C** Ensemble | Weighted vote, GREEN/AMBER/RED banding (Redis pub/sub pending) | ⚠️ |
 | **2A** FastAPI backend | `/health`, `POST /api/analyze`, `GET /api/challenge`, `ws /ws/analyze` | ✅ |
-| **2B** Streaming pipeline | 10s sliding-window detection over WebSocket (Redis fan-out + liveness-WS pending) | ⚠️ |
-| **3A** Dashboard core | `useWebSocket` hook, live risk gauge, scrolling spectrogram | ✅ |
-| **3B** Dashboard polish | Live mic capture, per-layer bars, alert history (scenario switcher skipped) | ⚠️ |
+| **2B** Streaming pipeline | Backend 10s sliding-window detection over `ws /ws/analyze` ✅ (currently unused by the UI; Redis fan-out + liveness-WS pending) | ⚠️ |
+| **3A** Dashboard core | Risk gauge + file-upload analysis UI (Vite). A live-WebSocket streaming dashboard was built then **intentionally replaced** by this simpler UI | ⚠️ |
+| **3B** Dashboard polish | Per-layer breakdown shown; live mic capture + alert history removed in the UI simplification; scenario switcher not built | ⚠️ |
 | **4** Docker + demo | Production Docker, demo audio pack, smoke test, perf validation | ❌ |
+
+> **Note:** the frontend was deliberately simplified to a Vite file-upload UI (`POST /api/analyze`). The streaming backend (`ws /ws/analyze`) stays available for a future live dashboard but is not currently wired to the UI.
 
 See [`HANDOFF.md`](HANDOFF.md) for full status, function reference, and open decisions.
