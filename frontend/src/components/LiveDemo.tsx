@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
+const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000";
 type Phase = "idle" | "analyzing" | "done";
 type Verdict = "PROTECTED" | "REVIEW" | "CRITICAL";
 
@@ -28,24 +28,54 @@ export default function LiveDemo() {
   const [hover, setHover] = useState(false);
   const [result, setResult] = useState<{ score: number; verdict: Verdict; layers: number[] } | null>(null);
 
-  function handleFile(f: File | null) {
+  async function handleFile(f: File | null) {
     if (!f) return;
+  
     setFile(f);
     setPhase("analyzing");
-    setTimeout(() => {
-      const c = classify(f.name);
-      const layers = LAYERS.map(() => {
-        const mid = (c.range[0] + c.range[1]) / 2;
-        const spread = (c.range[1] - c.range[0]) / 2;
-        const v = mid + (Math.random() * 2 - 1) * spread + (Math.random() * 10 - 5);
-        return Math.max(0, Math.min(100, Math.round(v)));
+  
+    try {
+      const form = new FormData();
+      form.append("audio", f, f.name);
+  
+      const resp = await fetch(`${BACKEND}/api/analyze`, {
+        method: "POST",
+        body: form,
       });
-      const score = Math.max(0, Math.min(100, c.base + Math.round(Math.random() * 10 - 5)));
-      setResult({ score, verdict: c.verdict, layers });
+  
+      if (!resp.ok) {
+        throw new Error(`Server error ${resp.status}`);
+      }
+  
+      const data = await resp.json();
+  
+      let verdict: Verdict = "REVIEW";
+  
+      if (data.alert_level === "GREEN") {
+        verdict = "PROTECTED";
+      } else if (data.alert_level === "RED") {
+        verdict = "CRITICAL";
+      }
+  
+      setResult({
+        score: data.risk_score,
+        verdict,
+        layers: [
+          data.layer_breakdown.aasist || 0,
+          data.layer_breakdown.mfcc || 0,
+          data.layer_breakdown.breath || 0,
+          data.layer_breakdown.phase || 0,
+          data.layer_breakdown.liveness || 0,
+        ],
+      });
+  
       setPhase("done");
-    }, 2500);
+    } catch (err) {
+      console.error(err);
+      setPhase("idle");
+    }
   }
-
+  
   function reset() {
     setFile(null);
     setResult(null);
