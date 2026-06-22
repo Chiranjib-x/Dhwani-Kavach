@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+
 type Phase = "idle" | "analyzing" | "done";
 type Verdict = "PROTECTED" | "REVIEW" | "CRITICAL";
 
@@ -38,6 +40,8 @@ export default function LiveDemo() {
       const form = new FormData();
       form.append("audio", f, f.name);
   
+      console.log("Sending to:", `${BACKEND}/api/analyze`);
+  
       const resp = await fetch(`${BACKEND}/api/analyze`, {
         method: "POST",
         body: form,
@@ -48,6 +52,8 @@ export default function LiveDemo() {
       }
   
       const data = await resp.json();
+  
+      console.log("Backend response:", data);
   
       let verdict: Verdict = "REVIEW";
   
@@ -61,21 +67,21 @@ export default function LiveDemo() {
         score: data.risk_score,
         verdict,
         layers: [
-          data.layer_breakdown.aasist || 0,
-          data.layer_breakdown.mfcc || 0,
-          data.layer_breakdown.breath || 0,
-          data.layer_breakdown.phase || 0,
-          data.layer_breakdown.liveness || 0,
+          data.layer_breakdown?.aasist ?? 0,
+          data.layer_breakdown?.mfcc ?? 0,
+          data.layer_breakdown?.breath ?? 0,
+          data.layer_breakdown?.phase ?? 0,
+          data.layer_breakdown?.liveness ?? 0,
         ],
       });
   
       setPhase("done");
     } catch (err) {
-      console.error(err);
+      console.error("Analyze failed:", err);
       setPhase("idle");
     }
   }
-  
+
   function reset() {
     setFile(null);
     setResult(null);
