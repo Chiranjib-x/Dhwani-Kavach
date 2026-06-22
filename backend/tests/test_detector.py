@@ -23,7 +23,7 @@ def test_worst_chunk_drives_verdict():
         return {k: v for k in ("aasist", "mfcc", "breath", "phase", "liveness")}
     _fake_setup(scorer)
 
-    audio = np.zeros(CHUNK_SAMPLES * 5, dtype=np.float32)
+    audio = np.full(CHUNK_SAMPLES * 5, 0.1, dtype=np.float32)  # non-silent so it isn't gated
     detector.load_audio_bytes = lambda b: (audio, SAMPLE_RATE)
     out = detector.detect_audio(b"x")
     assert out["risk_score"] == 90, out          # worst chunk (0.9) wins, not the mean
@@ -50,12 +50,23 @@ def test_chunk_count_capped_and_spans_file():
     print(f"  [OK] capped at {len(seen)} chunks, spans whole file")
 
 
+def test_silence_is_gated_to_green():
+    # Even if every layer screams "fake", silent audio must never produce a verdict.
+    _fake_setup(lambda chunk: {k: 0.9 for k in ("aasist", "mfcc", "breath", "phase", "liveness")})
+    silent = np.full(CHUNK_SAMPLES * 3, 1e-5, dtype=np.float32)
+    detector.load_audio_bytes = lambda b: (silent, SAMPLE_RATE)
+    out = detector.detect_audio(b"x")
+    assert out["alert_level"] == "GREEN" and out["risk_score"] == 0, out
+    print("  [OK] silence gated to GREEN despite fake-scoring layers")
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("Detector — chunked whole-file analysis")
     print("=" * 50)
     failed = []
-    for t in (test_worst_chunk_drives_verdict, test_chunk_count_capped_and_spans_file):
+    for t in (test_worst_chunk_drives_verdict, test_chunk_count_capped_and_spans_file,
+              test_silence_is_gated_to_green):
         try:
             t()
         except Exception as e:
