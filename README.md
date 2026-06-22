@@ -27,10 +27,19 @@ docker compose up
 
 ## Phase Roadmap
 
-- **Phase 0** — Scaffold + model download (current)
-- **Phase 1A** — Audio ingestion pipeline
-- **Phase 1B** — AASIST inference
-- **Phase 1C** — Layers 2–4
-- **Phase 1D** — Liveness challenge
-- **Phase 1E** — Ensemble scoring + WebSocket streaming
-- **Phase 2** — React dashboard
+Full plan: https://vishalvivek2007.github.io/Dhvani-kavach-plan/ (9 phases, 38 steps).
+Status legend: ✅ done · ⚠️ partial · ❌ not started.
+
+| Phase | Scope | Status |
+|---|---|---|
+| **0** Foundation | Monorepo scaffold, deps, AASIST weights, Docker skeleton | ✅ |
+| **1A** Spectrogram pipeline | Audio I/O, mel-spectrogram, handcrafted features | ✅ |
+| **1B** Detection layers | AASIST + MFCC, breath, phase-coherence, liveness | ✅ |
+| **1C** Ensemble | Weighted vote, GREEN/AMBER/RED banding (Redis pub/sub pending) | ⚠️ |
+| **2A** FastAPI backend | `/health`, `POST /api/analyze`, `GET /api/challenge`, `ws /ws/analyze` | ✅ |
+| **2B** Streaming pipeline | 10s sliding-window detection over WebSocket (Redis fan-out + liveness-WS pending) | ⚠️ |
+| **3A** Dashboard core | `useWebSocket` hook, live risk gauge, scrolling spectrogram | ✅ |
+| **3B** Dashboard polish | Live mic capture, per-layer bars, alert history (scenario switcher skipped) | ⚠️ |
+| **4** Docker + demo | Production Docker, demo audio pack, smoke test, perf validation | ❌ |
+
+See [`HANDOFF.md`](HANDOFF.md) for full status, function reference, and open decisions.
