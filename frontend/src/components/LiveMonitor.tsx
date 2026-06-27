@@ -124,7 +124,7 @@ export default function LiveMonitor() {
         <div>
           <div className="font-mono text-[11px] tracking-wider mb-2" style={{ color: C.muted }}>LIVE SPECTROGRAM</div>
           <canvas ref={canvasRef} width={512} height={150} className="w-full rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)" }} />
-          <div className="font-mono text-[10px] mt-2" style={{ color: C.muted }}>128-band · {TARGET_SR / 1000} kHz · 10s window, 5s hop</div>
+          <div className="font-mono text-[10px] mt-2" style={{ color: C.muted }}>128-band · {TARGET_SR / 1000} kHz · 4s window, 2s hop</div>
         </div>
       </div>
 
