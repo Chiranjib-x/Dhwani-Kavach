@@ -7,8 +7,8 @@ from ml.audio_utils import SAMPLE_RATE
 
 router = APIRouter()
 
-_WINDOW = SAMPLE_RATE * 10   # 10s detection window
-_HOP = SAMPLE_RATE * 5       # slide 5s forward (50% overlap for continuity)
+_WINDOW = SAMPLE_RATE * 4    # 4s window — matches the model's training clip length
+_HOP = SAMPLE_RATE * 2       # slide 2s forward (50% overlap) -> a fresh verdict every 2s
 
 
 def _drain_windows(buf: np.ndarray):
@@ -27,8 +27,8 @@ async def ws_analyze(websocket: WebSocket):
     Real-time streaming detection for a live call.
 
     Send raw 16 kHz mono float32 PCM as binary frames (e.g. Web Audio API
-    output). The server accumulates a 10s window, scores it, slides forward
-    5s, and emits {risk_score, alert_level, layer_breakdown} per window.
+    output). The server accumulates a 4s window, scores it, slides forward
+    2s, and emits {risk_score, alert_level, layer_breakdown} per window.
     """
     await websocket.accept()
     buf = np.empty(0, dtype=np.float32)
