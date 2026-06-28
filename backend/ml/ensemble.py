@@ -1,14 +1,15 @@
 import numpy as np
 
-# AASIST is the only trained classifier in the pipeline;
-# layers 2-5 are signal-processing heuristics that provide supporting signal.
-# Weights reflect that disparity honestly.
+# The "aasist" slot is the trained neural model (now wav2vec2, ~0.4% dev EER) and
+# carries the verdict. The 4 heuristics measurably under-perform it on real audio
+# (e.g. breath returns a constant ~0.75 on short windows), so they're kept as
+# minor supporting signal only. Weights reflect that honestly.
 WEIGHTS = {
-    "aasist":   0.60,
-    "mfcc":     0.10,
-    "breath":   0.10,
-    "phase":    0.10,
-    "liveness": 0.10,
+    "aasist":   0.80,
+    "mfcc":     0.07,
+    "breath":   0.03,
+    "phase":    0.05,
+    "liveness": 0.05,
 }
 
 

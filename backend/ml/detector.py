@@ -4,6 +4,7 @@ import numpy as np
 from ml.audio_utils import load_audio_bytes, chunk_audio
 from ml.aasist_model import load_aasist, infer as _aasist_infer
 from ml import spectrogram_cnn
+from ml import wav2vec2_detector
 from ml.handcrafted import score_handcrafted
 from ml.breath_detector import score_breath
 from ml.phase_coherence import score_phase
@@ -31,7 +32,9 @@ def _get_model():
 
 
 def _neural_infer(model, chunk: np.ndarray) -> float:
-    """Trained spectrogram CNN if its weights are present, else fall back to AASIST."""
+    """Best available trained model: wav2vec2 (SSL) > spectrogram CNN > AASIST."""
+    if wav2vec2_detector.available():
+        return wav2vec2_detector.infer(chunk)
     if spectrogram_cnn.available():
         return spectrogram_cnn.infer(chunk)
     return _aasist_infer(model, chunk)
@@ -60,7 +63,8 @@ def detect_samples(audio: np.ndarray) -> dict:
     (a deepfake anywhere in the call is a deepfake). Returns dict with
     risk_score (0-100), alert_level, and layer_breakdown of that worst chunk.
     """
-    model = None if spectrogram_cnn.available() else _get_model()
+    have_trained = wav2vec2_detector.available() or spectrogram_cnn.available()
+    model = None if have_trained else _get_model()
 
     chunks = chunk_audio(audio)
     if len(chunks) > _MAX_CHUNKS:
