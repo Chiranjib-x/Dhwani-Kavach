@@ -198,7 +198,7 @@ function Index() {
 
           <Reveal delay={0.2}>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              {["99.2% accuracy", "<400ms latency", "5 layers", "24/7 monitoring"].map((s) => (
+              {["~95% on modern fakes", "real-time · 2s updates", "5 detection layers", "explainable verdicts"].map((s) => (
                 <div key={s} className="px-4 py-2 rounded-full font-mono text-[11px]"
                   style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.07)", color: "#64748B" }}
                 >
@@ -259,6 +259,11 @@ function Index() {
             <h2 className="font-bold tracking-tight text-center" style={{ color: "#F1F5F9", fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
               Tested against the best cloning tools available.
             </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="mt-4 text-center mx-auto" style={{ color: "#64748B", fontSize: "0.95rem", maxWidth: 560 }}>
+              Illustrative scenarios — run the live demo above for real, on-the-spot scores.
+            </p>
           </Reveal>
 
           <div className="mt-16 grid md:grid-cols-3 gap-5">
