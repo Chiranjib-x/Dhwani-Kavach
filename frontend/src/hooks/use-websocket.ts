@@ -22,6 +22,14 @@ export function useWebSocket<T = unknown>(url: string, onMessage?: (msg: T) => v
 
   const connect = useCallback(() => {
     if (disposed.current) return
+    // Tear down any existing socket so a new run starts with a clean server-side
+    // buffer (prevents the previous clip's audio bleeding into the next verdict).
+    const old = wsRef.current
+    if (old) {
+      old.onopen = old.onmessage = old.onerror = old.onclose = null
+      try { old.close() } catch { /* already closing */ }
+    }
+    queue.current = []
     setStatus("connecting")
     const ws = new WebSocket(url)
     ws.binaryType = "arraybuffer"
@@ -59,10 +67,9 @@ export function useWebSocket<T = unknown>(url: string, onMessage?: (msg: T) => v
     }
   }, [connect])
 
-  /** Force a fresh connection — used when the user starts an analysis after retries gave up. */
+  /** Force a fresh connection (and a clean server buffer) at the start of each run. */
   const reconnect = useCallback(() => {
     retries.current = 0
-    if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) return
     connect()
   }, [connect])
 
