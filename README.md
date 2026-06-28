@@ -4,25 +4,28 @@ Real-time AI audio forensics system for detecting deepfake voices on live bankin
 
 ## Architecture
 
-5-layer ML pipeline:
-1. AASIST neural anti-spoofing
+5-layer ML pipeline (the trained neural model carries the verdict; layers 2–5 are supporting heuristics):
+1. **wav2vec2 (SSL) neural detector** — fine-tuned on ASVspoof + real Indian voices + modern fakes (~5% EER on modern deepfakes). Falls back to a spectrogram CNN, then AASIST, if its weights are absent.
 2. Handcrafted MFCC/spectral features
 3. Breath pattern detection
 4. Phase coherence analysis
 5. Liveness challenge
 
+> The wav2vec2 weights (`backend/models/deepfake_w2v.pt`, ~360 MB) are git-ignored — keep them locally. Without them the pipeline gracefully falls back to the committed CNN.
+
 ## Quick Start
 
+**One-click (Windows):** double-click `start-demo.bat` — it launches the backend + frontend and opens the dashboard.
+
+Manual:
+
 ```bash
-# Backend
+# Backend  -> http://localhost:8000
 pip install -r backend/requirements.txt
-uvicorn app.main:app --reload --app-dir backend
+python -m uvicorn app.main:app --app-dir backend --port 8000
 
-# Frontend
+# Frontend -> http://localhost:8080
 cd frontend && npm install && npm run dev
-
-# Full stack
-docker compose up
 ```
 
 ## Phase Roadmap
