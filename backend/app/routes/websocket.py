@@ -7,7 +7,7 @@ from ml.detector import detect_samples
 from ml.audio_utils import SAMPLE_RATE
 from ml import scam_detector
 from ml.fusion import fuse
-from app import audit
+from app import audit, metrics
 
 router = APIRouter()
 
@@ -85,6 +85,7 @@ async def ws_analyze(websocket: WebSocket):
             try:
                 result = await asyncio.to_thread(detect_samples, w.copy())
             except Exception as exc:
+                metrics.record_error("ws")
                 await websocket.send_json({"error": str(exc)})
                 continue
 
@@ -115,6 +116,7 @@ async def ws_analyze(websocket: WebSocket):
                 novelty=result.get("novelty", 0.0),
             ))
             audit.record("ws", result)
+            metrics.record_verdict("ws", result["alert_level"], result.get("action"))
             await websocket.send_json(result)
     except WebSocketDisconnect:
         pass

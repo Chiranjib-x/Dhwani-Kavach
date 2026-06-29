@@ -8,10 +8,13 @@ import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.analyze import router as analyze_router
 from app.routes.challenge import router as challenge_router
 from app.routes.websocket import router as ws_router
+from app.routes.cases import router as cases_router
+from app import metrics
 
 # Production hardening, opt-in via env so local demo stays open:
 #   DHWANI_API_KEY   -> if set, /api/* requires header  x-api-key: <key>
@@ -38,8 +41,14 @@ _guard = [Depends(require_key)] if _API_KEY else []
 app.include_router(analyze_router, prefix="/api", dependencies=_guard)
 app.include_router(challenge_router, prefix="/api", dependencies=_guard)
 app.include_router(ws_router)
+app.include_router(cases_router)  # defines full paths (/api/cases, /cases)
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "dhwani-kavach-backend"}
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics_endpoint():
+    return metrics.render()
