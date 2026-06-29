@@ -15,3 +15,6 @@ transformers==4.44.2
 pydantic==2.7.1
 python-multipart==0.0.9
 aiofiles==23.2.1
+# Optional: enables the scam-script layer's speech-to-text. Without it the scam
+# layer stays neutral and the deepfake pipeline is unaffected.
+# faster-whisper==1.0.3

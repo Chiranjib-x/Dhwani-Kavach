@@ -8,13 +8,23 @@ const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000"
 const WS_URL = BACKEND.replace(/^http/, "ws") + "/ws/analyze"
 
 type AlertLevel = "GREEN" | "AMBER" | "RED"
-type Result = { risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number> }
+type Scam = { score: number; tactics: string[]; transcript?: string }
+type Action = "MONITOR" | "CHALLENGE" | "BLOCK"
+type Result = {
+  risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number>
+  novelty?: number; scam?: Scam; action?: Action; action_reason?: string
+}
 type WsMsg = Result | { error: string }
 type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer: string }
 
 const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.07)" }
 const LAYERS: [string, string][] = [["aasist", "AASIST"], ["mfcc", "Spectral Biometrics"], ["breath", "Breath Pattern"], ["phase", "Phase Coherence"], ["liveness", "Active Liveness"]]
 const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ? C.warn : l === "GREEN" ? C.ok : C.muted)
+const actionColor = (a?: Action) => (a === "BLOCK" ? C.threat : a === "CHALLENGE" ? C.warn : C.ok)
+const TACTIC_LABEL: Record<string, string> = {
+  urgency: "Urgency", authority_impersonation: "Authority impersonation", isolation: "Isolation",
+  new_beneficiary: "New beneficiary", sensitive_info_request: "Asking for OTP/PIN", threat: "Threat / coercion",
+}
 
 function topLayer(b: Record<string, number>): string {
   let best = "", bv = -1
@@ -47,7 +57,10 @@ export default function LiveMonitor() {
     abortRef.current?.abort()
     mic.stop()
   }, [mic])
-  useEffect(() => cleanup, [cleanup])
+  // Tear down ONLY on unmount. Keying this effect on `cleanup` (which changes
+  // every render) would stop the mic/visualizer on every verdict — a churn loop.
+  const cleanupRef = useRef(cleanup); cleanupRef.current = cleanup
+  useEffect(() => () => cleanupRef.current(), [])
 
   const analyzeFile = useCallback(async (file: File) => {
     cleanup(); setError(null); setResult(null); setFileName(file.name); setMode("file")
@@ -128,6 +141,35 @@ export default function LiveMonitor() {
         </div>
       </div>
 
+      {/* shield decision: fused action + scam-script + novelty */}
+      <div className="mt-8 grid gap-3 md:grid-cols-[auto_1fr] md:items-center">
+        <div className="rounded-xl px-5 py-3 flex items-center gap-3" style={{ border: `1px solid ${actionColor(result?.action)}` }}>
+          <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: C.muted }}>RECOMMENDED ACTION</span>
+          <span className="font-mono font-bold text-[15px] tracking-wider" style={{ color: actionColor(result?.action) }}>
+            {result?.action ?? "—"}
+          </span>
+        </div>
+        <div className="text-[12px]" style={{ color: C.muted }}>
+          {result?.action_reason || "Fuses synthetic-voice, scam-script and transaction context into one decision."}
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[11px] tracking-wider" style={{ color: C.muted }}>
+          SCAM-SCRIPT {result?.scam?.score ?? 0}/100
+        </span>
+        {(result?.scam?.tactics ?? []).map((t) => (
+          <span key={t} className="rounded-full px-3 py-1 text-[11px]" style={{ border: `1px solid ${C.warn}`, color: C.warn }}>
+            {TACTIC_LABEL[t] ?? t}
+          </span>
+        ))}
+        {!result?.scam?.tactics?.length && (
+          <span className="text-[11px]" style={{ color: C.muted }}>no social-engineering tactics detected</span>
+        )}
+        <span className="font-mono text-[11px] ml-auto" style={{ color: (result?.novelty ?? 0) >= 0.6 ? C.warn : C.muted }}>
+          NOVELTY {Math.round((result?.novelty ?? 0) * 100)}%{(result?.novelty ?? 0) >= 0.6 ? " · unknown signature" : ""}
+        </span>
+      </div>
+
       {/* per-layer bars */}
       <div className="mt-8 space-y-3">
         {LAYERS.map(([key, name], i) => {
@@ -177,21 +219,26 @@ function renderSpectrogram(canvas: HTMLCanvasElement | null, analyser: AnalyserN
   ctx.clearRect(0, 0, w, h)
   const bins = analyser.frequencyBinCount
   const data = new Uint8Array(bins)
-  let raf = 0, stopped = false
-  const draw = () => {
+  let raf = 0, stopped = false, last = 0
+  const colH = h / bins + 1
+  const draw = (t: number) => {
     if (stopped) return
     raf = requestAnimationFrame(draw)
+    // ~30fps cap: enough for a live feel, half the main-thread cost of 60fps.
+    if (t - last < 33) return
+    last = t
     analyser.getByteFrequencyData(data)
-    const img = ctx.getImageData(1, 0, w - 1, h)
-    ctx.putImageData(img, 0, 0)
-    const colH = h / bins + 1
+    // Scroll left with a GPU-accelerated self-blit instead of a per-frame
+    // getImageData/putImageData CPU readback (that readback froze the tab).
+    ctx.drawImage(canvas, -1, 0)
+    ctx.clearRect(w - 1, 0, 1, h)
     for (let i = 0; i < bins; i++) {
       const v = data[i] / 255
       ctx.fillStyle = `hsl(${175 - v * 120}, 80%, ${10 + v * 50}%)`
       ctx.fillRect(w - 1, h - (i / bins) * h, 1, colH)
     }
   }
-  draw()
+  raf = requestAnimationFrame(draw)
   return () => { stopped = true; cancelAnimationFrame(raf) }
 }
 

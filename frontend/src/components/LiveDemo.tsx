@@ -16,6 +16,12 @@ function classify(name: string): { base: number; verdict: Verdict; range: [numbe
 }
 
 const verdictColor = (v: Verdict) => (v === "PROTECTED" ? "#22C55E" : v === "CRITICAL" ? "#FF4D6D" : "#F59E0B");
+type Action = "MONITOR" | "CHALLENGE" | "BLOCK";
+const actionColor = (a?: Action) => (a === "BLOCK" ? "#FF4D6D" : a === "CHALLENGE" ? "#F59E0B" : "#22C55E");
+const TACTIC_LABEL: Record<string, string> = {
+  urgency: "Urgency", authority_impersonation: "Authority impersonation", isolation: "Isolation",
+  new_beneficiary: "New beneficiary", sensitive_info_request: "Asking for OTP/PIN", threat: "Threat / coercion",
+};
 
 function formatSize(b: number) {
   if (b < 1024) return `${b} B`;
@@ -28,7 +34,12 @@ export default function LiveDemo() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [hover, setHover] = useState(false);
-  const [result, setResult] = useState<{ score: number; verdict: Verdict; layers: number[] } | null>(null);
+  const [amount, setAmount] = useState("");
+  const [newBeneficiary, setNewBeneficiary] = useState(false);
+  const [result, setResult] = useState<{
+    score: number; verdict: Verdict; layers: number[];
+    action?: Action; actionReason?: string; scam?: { score: number; tactics: string[] }; novelty?: number;
+  } | null>(null);
 
   async function handleFile(f: File | null) {
     if (!f) return;
@@ -39,7 +50,9 @@ export default function LiveDemo() {
     try {
       const form = new FormData();
       form.append("audio", f, f.name);
-  
+      form.append("amount", amount || "0");
+      form.append("new_beneficiary", String(newBeneficiary));
+
       console.log("Sending to:", `${BACKEND}/api/analyze`);
   
       const resp = await fetch(`${BACKEND}/api/analyze`, {
@@ -63,6 +76,8 @@ export default function LiveDemo() {
         verdict = "CRITICAL";
       }
   
+      if (data.alert_level === "AMBER") verdict = "REVIEW";
+
       setResult({
         score: data.risk_score,
         verdict,
@@ -73,6 +88,10 @@ export default function LiveDemo() {
           data.layer_breakdown?.phase ?? 0,
           data.layer_breakdown?.liveness ?? 0,
         ],
+        action: data.action,
+        actionReason: data.action_reason,
+        scam: data.scam,
+        novelty: data.novelty,
       });
   
       setPhase("done");
@@ -101,6 +120,22 @@ export default function LiveDemo() {
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
       />
+
+      {phase === "idle" && (
+        <div className="mb-5 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 font-mono text-[11px] tracking-wider text-[#64748B]">
+            TRANSFER ₹
+            <input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0"
+              className="w-28 rounded-md bg-transparent px-2 py-1 text-[12px] text-[#F1F5F9] outline-none"
+              style={{ border: "1px solid rgba(255,255,255,0.12)" }} />
+          </label>
+          <label className="flex items-center gap-2 font-mono text-[11px] tracking-wider text-[#64748B] cursor-pointer">
+            <input type="checkbox" checked={newBeneficiary} onChange={(e) => setNewBeneficiary(e.target.checked)} />
+            NEW BENEFICIARY
+          </label>
+          <span className="font-mono text-[10px] text-[#475569]">context → drives the Monitor/Challenge/Block decision</span>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {phase === "idle" && (
@@ -182,6 +217,28 @@ export default function LiveDemo() {
                 </div>
               </div>
               <div className="font-mono text-[11px] text-[#64748B] text-right truncate max-w-[50%]">{file?.name}</div>
+            </div>
+
+            {/* fused decision */}
+            <div className="mt-6 rounded-xl px-5 py-4" style={{ border: `1px solid ${actionColor(result.action)}` }}>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] tracking-[0.2em] text-[#64748B]">RECOMMENDED ACTION</span>
+                <span className="font-mono font-bold text-[15px] tracking-wider" style={{ color: actionColor(result.action) }}>
+                  {result.action ?? "—"}
+                </span>
+              </div>
+              {result.actionReason && <div className="mt-1.5 text-[12px] text-[#94A3B8]">{result.actionReason}</div>}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[11px] text-[#64748B]">SCAM-SCRIPT {result.scam?.score ?? 0}/100</span>
+                {(result.scam?.tactics ?? []).map((t) => (
+                  <span key={t} className="rounded-full px-3 py-1 text-[11px]" style={{ border: "1px solid #F59E0B", color: "#F59E0B" }}>
+                    {TACTIC_LABEL[t] ?? t}
+                  </span>
+                ))}
+                <span className="font-mono text-[11px] ml-auto" style={{ color: (result.novelty ?? 0) >= 0.6 ? "#F59E0B" : "#64748B" }}>
+                  NOVELTY {Math.round((result.novelty ?? 0) * 100)}%{(result.novelty ?? 0) >= 0.6 ? " · unknown" : ""}
+                </span>
+              </div>
             </div>
 
             <div className="mt-8 space-y-3">
