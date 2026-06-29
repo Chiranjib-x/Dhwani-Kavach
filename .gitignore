@@ -9,3 +9,6 @@ frontend/dist/
 *.log
 backend/models/deepfake_w2v.pt
 opencode.json
+backend/audit_log.jsonl
+frontend/.next/
+frontend/tsconfig.tsbuildinfo

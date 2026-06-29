@@ -81,6 +81,17 @@ def detect_samples(audio: np.ndarray) -> dict:
 
     result = compute_ensemble(worst)
     result["layer_breakdown"] = {k: int(round(v * 100)) for k, v in worst.items()}
+    # Novelty / zero-day flag: the neural model's own uncertainty. A confident
+    # real (p~0) or confident fake (p~1) is "known"; p near 0.5 means the
+    # synthesis signature looks unlike anything it was trained on.
+    # ponytail: softmax-uncertainty v1; upgrade to embedding-distance OOD if it misfires.
+    p = worst.get("aasist", 0.0)
+    novelty = round(1.0 - abs(2.0 * p - 1.0), 3)
+    result["novelty"] = novelty
+    # D3: an unknown synthesis signature can't read fully clean — a confident
+    # GREEN with high model uncertainty is exactly the zero-day case. Lift to AMBER.
+    if novelty >= 0.6 and result["alert_level"] == "GREEN":
+        result["alert_level"] = "AMBER"
     return result
 
 
