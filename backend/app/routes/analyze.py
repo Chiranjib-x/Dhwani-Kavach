@@ -5,9 +5,9 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 from ml.audio_utils import load_audio_bytes
 from ml.detector import detect_samples
-from ml import scam_detector
+from ml import scam_detector, wav2vec2_detector
 from ml.fusion import fuse
-from app import audit, metrics, policy
+from app import audit, metrics, policy, voiceprints
 
 router = APIRouter()
 
@@ -25,6 +25,7 @@ class AnalysisResult(BaseModel):
     call_id: str = ""
     mode: str = "enforce"
     enforced: bool = True
+    campaign: dict = {}
 
 
 @router.post("/analyze", response_model=AnalysisResult)
@@ -58,6 +59,14 @@ async def analyze_audio(
     ))
     policy.annotate(result, policy.is_shadow(shadow))
     result["call_id"] = audit.record("rest", result)
+    # Campaign correlation: fingerprint the voice and link it to prior calls.
+    if wav2vec2_detector.available():
+        try:
+            vec = await asyncio.to_thread(wav2vec2_detector.embed, samples)
+            result["campaign"] = voiceprints.register(
+                result["call_id"], vec, result["risk_score"], result.get("action"))
+        except Exception:
+            pass  # campaign intel is additive — never fail the verdict
     metrics.observe_latency(time.monotonic() - t0)
     metrics.record_verdict("rest", result["alert_level"], result.get("action"))
     return AnalysisResult(**result)

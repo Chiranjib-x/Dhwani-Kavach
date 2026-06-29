@@ -39,6 +39,7 @@ export default function LiveDemo() {
   const [result, setResult] = useState<{
     score: number; verdict: Verdict; layers: number[];
     action?: Action; actionReason?: string; scam?: { score: number; tactics: string[] }; novelty?: number;
+    campaign?: { repeat_voice?: boolean; cluster_size?: number; blocklist_hit?: boolean };
   } | null>(null);
 
   async function handleFile(f: File | null) {
@@ -92,6 +93,7 @@ export default function LiveDemo() {
         actionReason: data.action_reason,
         scam: data.scam,
         novelty: data.novelty,
+        campaign: data.campaign,
       });
   
       setPhase("done");
@@ -228,6 +230,16 @@ export default function LiveDemo() {
                 </span>
               </div>
               {result.actionReason && <div className="mt-1.5 text-[12px] text-[#94A3B8]">{result.actionReason}</div>}
+              {result.campaign?.blocklist_hit && (
+                <div className="mt-2 text-[12px]" style={{ color: "#FF4D6D" }}>
+                  ⚠ Known fraud voiceprint — this voice has been flagged before.
+                </div>
+              )}
+              {result.campaign?.repeat_voice && !result.campaign?.blocklist_hit && (
+                <div className="mt-2 text-[12px]" style={{ color: "#F59E0B" }}>
+                  ↺ Repeat voice — same voiceprint seen across {result.campaign?.cluster_size ?? 2} calls (possible campaign).
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[11px] text-[#64748B]">SCAM-SCRIPT {result.scam?.score ?? 0}/100</span>
                 {(result.scam?.tactics ?? []).map((t) => (

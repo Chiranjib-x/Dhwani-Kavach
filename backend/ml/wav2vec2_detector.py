@@ -32,8 +32,12 @@ class _SSL(nn.Module):
             nn.Linear(768, 256), nn.ReLU(), nn.Dropout(0.3), nn.Linear(256, 2)
         )
 
+    def embed(self, x):
+        """Mean-pooled wav2vec2 features (768-d) — the utterance voiceprint."""
+        return self.w2v(x).last_hidden_state.mean(1)
+
     def forward(self, x):
-        return self.head(self.w2v(x).last_hidden_state.mean(1))
+        return self.head(self.embed(x))
 
 
 def _get_model() -> "_SSL":
@@ -54,3 +58,15 @@ def infer(audio: np.ndarray) -> float:
     with torch.no_grad():
         prob = torch.softmax(_get_model()(x), dim=1)[0, 1].item()
     return float(prob)
+
+
+def embed(audio: np.ndarray) -> np.ndarray:
+    """Return the 768-d L2-normalised voiceprint for an utterance (for campaign
+    correlation). Same preprocessing as infer()."""
+    w = pad_or_trim(audio, CHUNK_SAMPLES).astype(np.float32)
+    w = (w - w.mean()) / (w.std() + 1e-7)
+    x = torch.from_numpy(w).unsqueeze(0)
+    with torch.no_grad():
+        v = _get_model().embed(x)[0].numpy().astype(np.float32)
+    n = np.linalg.norm(v)
+    return v / n if n > 0 else v

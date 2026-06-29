@@ -10,5 +10,6 @@ frontend/dist/
 backend/models/deepfake_w2v.pt
 opencode.json
 backend/audit_log.jsonl
+backend/voiceprints.db
 frontend/.next/
 frontend/tsconfig.tsbuildinfo
