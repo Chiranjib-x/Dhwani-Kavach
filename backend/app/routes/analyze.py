@@ -7,7 +7,7 @@ from ml.audio_utils import load_audio_bytes
 from ml.detector import detect_samples
 from ml import scam_detector
 from ml.fusion import fuse
-from app import audit, metrics
+from app import audit, metrics, policy
 
 router = APIRouter()
 
@@ -22,6 +22,9 @@ class AnalysisResult(BaseModel):
     scam: dict = {}
     action: str = "MONITOR"
     action_reason: str = ""
+    call_id: str = ""
+    mode: str = "enforce"
+    enforced: bool = True
 
 
 @router.post("/analyze", response_model=AnalysisResult)
@@ -29,6 +32,7 @@ async def analyze_audio(
     audio: UploadFile = File(...),
     amount: float = Form(0),
     new_beneficiary: bool = Form(False),
+    shadow: bool | None = Form(None),
 ):
     data = await audio.read()
     if not data:
@@ -52,7 +56,8 @@ async def analyze_audio(
         novelty=result.get("novelty", 0.0),
         txn={"amount": amount, "new_beneficiary": new_beneficiary},
     ))
-    audit.record("rest", result)
+    policy.annotate(result, policy.is_shadow(shadow))
+    result["call_id"] = audit.record("rest", result)
     metrics.observe_latency(time.monotonic() - t0)
     metrics.record_verdict("rest", result["alert_level"], result.get("action"))
     return AnalysisResult(**result)
