@@ -63,15 +63,18 @@ def _get_whisper():
     return _whisper
 
 
-def transcribe(audio: np.ndarray) -> str:
+def transcribe(audio: np.ndarray) -> tuple[str, str]:
+    """Return (transcript, detected_language). Language auto-detected (Hindi/
+    English/Hinglish/regional all supported by Whisper)."""
     model = _get_whisper()
     if model is None:
-        return ""
+        return "", ""
     try:
-        segments, _ = model.transcribe(audio.astype("float32"), language=None, vad_filter=True)
-        return " ".join(s.text for s in segments).strip()
+        segments, info = model.transcribe(audio.astype("float32"), language=None, vad_filter=True)
+        text = " ".join(s.text for s in segments).strip()
+        return text, getattr(info, "language", "") or ""
     except Exception:
-        return ""
+        return "", ""
 
 
 # --- LLM scoring -------------------------------------------------------------
@@ -120,7 +123,10 @@ def _extract_json(s: str) -> dict:
 
 def analyze(audio: np.ndarray) -> dict:
     """audio -> transcript -> scam score. Neutral if transcription/LLM unavailable."""
-    return score_transcript(transcribe(audio))
+    text, lang = transcribe(audio)
+    result = score_transcript(text)
+    result["language"] = lang
+    return result
 
 
 if __name__ == "__main__":

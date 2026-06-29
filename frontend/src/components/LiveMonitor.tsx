@@ -8,11 +8,12 @@ const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000"
 const WS_URL = BACKEND.replace(/^http/, "ws") + "/ws/analyze"
 
 type AlertLevel = "GREEN" | "AMBER" | "RED"
-type Scam = { score: number; tactics: string[]; transcript?: string }
+type Scam = { score: number; tactics: string[]; transcript?: string; language?: string }
 type Action = "MONITOR" | "CHALLENGE" | "BLOCK"
 type Result = {
   risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number>
   novelty?: number; scam?: Scam; action?: Action; action_reason?: string
+  mode?: "shadow" | "enforce"; enforced?: boolean
 }
 type WsMsg = Result | { error: string }
 type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer: string }
@@ -34,6 +35,7 @@ function topLayer(b: Record<string, number>): string {
 
 export default function LiveMonitor() {
   const [result, setResult] = useState<Result | null>(null)
+  const [shadow, setShadow] = useState(false)  // false = enforce (acts), true = shadow (advisory)
   const [mode, setMode] = useState<"idle" | "file" | "mic">("idle")
   const [fileName, setFileName] = useState<string | null>(null)
   const [alerts, setAlerts] = useState<Alert[]>([])
@@ -49,7 +51,8 @@ export default function LiveMonitor() {
     setResult(msg)
     setAlerts((a) => [{ id: ++seq.current, time: new Date().toLocaleTimeString(), risk: msg.risk_score, level: msg.alert_level, layer: topLayer(msg.layer_breakdown) }, ...a].slice(0, 12))
   }, [])
-  const { status, send, reconnect } = useWebSocket<WsMsg>(WS_URL, onMessage)
+  // URL carries the policy mode; flipping it reconnects with the new mode.
+  const { status, send, reconnect } = useWebSocket<WsMsg>(`${WS_URL}?shadow=${shadow}`, onMessage)
   const mic = useMicStream(send)
 
   const cleanup = useCallback(() => {
@@ -102,6 +105,12 @@ export default function LiveMonitor() {
           {status === "open" ? "LIVE SOCKET CONNECTED" : status === "connecting" ? "CONNECTING…" : "DETECTOR OFFLINE"}
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setShadow((s) => !s)}
+            title="Shadow = score & log but take no action (pilot). Enforce = act on verdicts."
+            className="rounded-full px-4 py-2 text-[12px] font-medium transition-colors"
+            style={{ border: `1px solid ${shadow ? C.muted : C.ok}`, color: shadow ? C.muted : C.ok }}>
+            {shadow ? "◐ Shadow (advisory)" : "● Enforce (live)"}
+          </button>
           <button onClick={() => inputRef.current?.click()} disabled={mode !== "idle"}
             className="rounded-full px-4 py-2 text-[12px] font-medium transition-colors disabled:opacity-40"
             style={{ border: `1px solid ${C.cyan}`, color: C.cyan, backgroundColor: "transparent" }}>
@@ -148,6 +157,11 @@ export default function LiveMonitor() {
           <span className="font-mono font-bold text-[15px] tracking-wider" style={{ color: actionColor(result?.action) }}>
             {result?.action ?? "—"}
           </span>
+          {result?.mode === "shadow" && (
+            <span className="rounded-full px-2 py-0.5 text-[9px] tracking-wider" style={{ border: `1px solid ${C.muted}`, color: C.muted }}>
+              SHADOW · ADVISORY
+            </span>
+          )}
         </div>
         <div className="text-[12px]" style={{ color: C.muted }}>
           {result?.action_reason || "Fuses synthetic-voice, scam-script and transaction context into one decision."}
@@ -157,6 +171,11 @@ export default function LiveMonitor() {
         <span className="font-mono text-[11px] tracking-wider" style={{ color: C.muted }}>
           SCAM-SCRIPT {result?.scam?.score ?? 0}/100
         </span>
+        {result?.scam?.language && (
+          <span className="font-mono text-[10px] uppercase rounded px-1.5 py-0.5" style={{ border: `1px solid ${C.faint}`, color: C.muted }}>
+            {result.scam.language}
+          </span>
+        )}
         {(result?.scam?.tactics ?? []).map((t) => (
           <span key={t} className="rounded-full px-3 py-1 text-[11px]" style={{ border: `1px solid ${C.warn}`, color: C.warn }}>
             {TACTIC_LABEL[t] ?? t}

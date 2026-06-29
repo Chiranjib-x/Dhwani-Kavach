@@ -7,7 +7,7 @@ from ml.detector import detect_samples
 from ml.audio_utils import SAMPLE_RATE
 from ml import scam_detector
 from ml.fusion import fuse
-from app import audit, metrics
+from app import audit, metrics, policy
 
 router = APIRouter()
 
@@ -50,6 +50,9 @@ async def ws_analyze(websocket: WebSocket):
     it never blocks the verdict loop.
     """
     await websocket.accept()
+    # Shadow mode: env default, optional ?shadow=true|false override per connection.
+    q = websocket.query_params.get("shadow")
+    shadow = policy.is_shadow({"true": True, "false": False}.get((q or "").lower()))
     buf = np.empty(0, dtype=np.float32)
     recent = np.empty(0, dtype=np.float32)
     scam = {"score": 0, "tactics": [], "transcript": ""}
@@ -115,7 +118,8 @@ async def ws_analyze(websocket: WebSocket):
                 scam_score=scam.get("score", 0),
                 novelty=result.get("novelty", 0.0),
             ))
-            audit.record("ws", result)
+            policy.annotate(result, shadow)
+            result["call_id"] = audit.record("ws", result)
             metrics.record_verdict("ws", result["alert_level"], result.get("action"))
             await websocket.send_json(result)
     except WebSocketDisconnect:
