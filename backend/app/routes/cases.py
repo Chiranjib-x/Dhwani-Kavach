@@ -97,6 +97,10 @@ async def case_page(call_id: str):
         f"<h3>Verdict</h3><table>{rows}</table>"
         f"<h3>Layer breakdown</h3><table><tr><th>LAYER</th><th>SCORE</th></tr>{layers}</table>"
         f"<h3>Transcript</h3><div class='tx'>{(c.get('transcript') or '—')}</div>"
+        f"<h3>Analyst review</h3><p>Label this call: "
+        f"<a href='/cases/{call_id}/label/fraud'>Mark FRAUD</a> · "
+        f"<a href='/cases/{call_id}/label/legit'>Mark LEGIT</a> "
+        f"<span class='muted'>(feeds TPR/FPR on <a href='/governance'>governance</a>)</span></p>"
         f"<p class='muted'>Evidence pack — no audio retained. <a href='/cases'>← all cases</a></p>")
     return HTMLResponse(_PAGE.format(
         title=f"Case {call_id}", h1=f"EVIDENCE PACK — {call_id}",

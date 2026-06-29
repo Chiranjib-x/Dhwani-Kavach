@@ -1,0 +1,28 @@
+{
+  "models": [
+    {
+      "version": "w2v-v3-modern",
+      "date": "2026-06",
+      "architecture": "wav2vec2-base (SSL) + MLP head",
+      "training_data": [
+        "ASVspoof 2019 LA",
+        "Common Voice Hindi (real)",
+        "In-the-Wild (real + fake)",
+        "Fake-or-Real (fake)",
+        "user clones (ElevenLabs)"
+      ],
+      "eval": { "dev_eer_modern_fakes_pct": 5.2, "asvspoof_dev_eer_pct": 0.13 },
+      "status": "champion",
+      "notes": "Deployed weights (deepfake_w2v.pt). Broad 'real' incl. Indian voices to cut false positives."
+    },
+    {
+      "version": "w2v-v4-telephony",
+      "date": "pending",
+      "architecture": "wav2vec2-base (SSL) + MLP head",
+      "training_data": ["w2v-v3 data + telephony augmentation (8kHz, G.711, packet loss)"],
+      "eval": { "telephony_dev_eer_pct": null, "clean_dev_eer_pct": null },
+      "status": "challenger",
+      "notes": "Phase H retrain in progress on Kaggle. Promote to champion once telephony EER improves and clean does not regress."
+    }
+  ]
+}
