@@ -1,0 +1,35 @@
+{
+  "models": [
+    {
+      "version": "w2v-v4-telephony",
+      "date": "2026-06",
+      "architecture": "wav2vec2-base (SSL) + MLP head",
+      "training_data": [
+        "ASVspoof 2019 LA",
+        "Common Voice Hindi (real)",
+        "In-the-Wild (real + fake)",
+        "Fake-or-Real (fake)",
+        "user clones (ElevenLabs)",
+        "telephony augmentation (8kHz, G.711 mu-law, packet loss)"
+      ],
+      "eval": { "clean_dev_eer_pct": 4.0, "telephony_dev_eer_pct": 6.0 },
+      "status": "champion",
+      "notes": "Deployed weights (deepfake_w2v.pt). Telephony-robust: clean->phone gap only ~2pts."
+    },
+    {
+      "version": "w2v-v3-modern",
+      "date": "2026-06",
+      "architecture": "wav2vec2-base (SSL) + MLP head",
+      "training_data": [
+        "ASVspoof 2019 LA",
+        "Common Voice Hindi (real)",
+        "In-the-Wild (real + fake)",
+        "Fake-or-Real (fake)",
+        "user clones (ElevenLabs)"
+      ],
+      "eval": { "dev_eer_modern_fakes_pct": 5.2, "asvspoof_dev_eer_pct": 0.13 },
+      "status": "archived",
+      "notes": "Previous champion. Rollback file kept locally as deepfake_w2v_v1.pt."
+    }
+  ]
+}

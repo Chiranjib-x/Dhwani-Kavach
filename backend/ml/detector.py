@@ -3,6 +3,8 @@ import numpy as np
 
 from ml.audio_utils import load_audio_bytes, chunk_audio
 from ml.aasist_model import load_aasist, infer as _aasist_infer
+from ml import spectrogram_cnn
+from ml import wav2vec2_detector
 from ml.handcrafted import score_handcrafted
 from ml.breath_detector import score_breath
 from ml.phase_coherence import score_phase
@@ -22,10 +24,20 @@ _SILENCE_RMS = 1e-3
 
 
 def _get_model():
+    # Only needed as a fallback when the trained CNN weights aren't present.
     global _model
     if _model is None:
         _model = load_aasist(_MODEL_PATH)
     return _model
+
+
+def _neural_infer(model, chunk: np.ndarray) -> float:
+    """Best available trained model: wav2vec2 (SSL) > spectrogram CNN > AASIST."""
+    if wav2vec2_detector.available():
+        return wav2vec2_detector.infer(chunk)
+    if spectrogram_cnn.available():
+        return spectrogram_cnn.infer(chunk)
+    return _aasist_infer(model, chunk)
 
 
 def _rms(x: np.ndarray) -> float:
@@ -34,7 +46,7 @@ def _rms(x: np.ndarray) -> float:
 
 def _score_chunk(model, chunk: np.ndarray) -> dict:
     raw = {
-        "aasist":   _aasist_infer(model, chunk),
+        "aasist":   _neural_infer(model, chunk),
         "mfcc":     score_handcrafted(chunk),
         "breath":   score_breath(chunk),
         "phase":    score_phase(chunk),
@@ -51,7 +63,8 @@ def detect_samples(audio: np.ndarray) -> dict:
     (a deepfake anywhere in the call is a deepfake). Returns dict with
     risk_score (0-100), alert_level, and layer_breakdown of that worst chunk.
     """
-    model = _get_model()
+    have_trained = wav2vec2_detector.available() or spectrogram_cnn.available()
+    model = None if have_trained else _get_model()
 
     chunks = chunk_audio(audio)
     if len(chunks) > _MAX_CHUNKS:
@@ -68,6 +81,17 @@ def detect_samples(audio: np.ndarray) -> dict:
 
     result = compute_ensemble(worst)
     result["layer_breakdown"] = {k: int(round(v * 100)) for k, v in worst.items()}
+    # Novelty / zero-day flag: the neural model's own uncertainty. A confident
+    # real (p~0) or confident fake (p~1) is "known"; p near 0.5 means the
+    # synthesis signature looks unlike anything it was trained on.
+    # ponytail: softmax-uncertainty v1; upgrade to embedding-distance OOD if it misfires.
+    p = worst.get("aasist", 0.0)
+    novelty = round(1.0 - abs(2.0 * p - 1.0), 3)
+    result["novelty"] = novelty
+    # D3: an unknown synthesis signature can't read fully clean — a confident
+    # GREEN with high model uncertainty is exactly the zero-day case. Lift to AMBER.
+    if novelty >= 0.6 and result["alert_level"] == "GREEN":
+        result["alert_level"] = "AMBER"
     return result
 
 

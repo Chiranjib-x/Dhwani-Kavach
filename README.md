@@ -4,33 +4,47 @@ Real-time AI audio forensics system for detecting deepfake voices on live bankin
 
 ## Architecture
 
-5-layer ML pipeline:
-1. AASIST neural anti-spoofing
+5-layer ML pipeline (the trained neural model carries the verdict; layers 2–5 are supporting heuristics):
+1. **wav2vec2 (SSL) neural detector** — fine-tuned on ASVspoof + real Indian voices + modern fakes (~5% EER on modern deepfakes). Falls back to a spectrogram CNN, then AASIST, if its weights are absent.
 2. Handcrafted MFCC/spectral features
 3. Breath pattern detection
 4. Phase coherence analysis
 5. Liveness challenge
 
+> The wav2vec2 weights (`backend/models/deepfake_w2v.pt`, ~360 MB) are git-ignored — keep them locally. Without them the pipeline gracefully falls back to the committed CNN.
+
 ## Quick Start
 
+**One-click (Windows):** double-click `start-demo.bat` — it launches the backend + frontend and opens the dashboard.
+
+Manual:
+
 ```bash
-# Backend
+# Backend  -> http://localhost:8000
 pip install -r backend/requirements.txt
-uvicorn app.main:app --reload --app-dir backend
+python -m uvicorn app.main:app --app-dir backend --port 8000
 
-# Frontend
+# Frontend -> http://localhost:8080
 cd frontend && npm install && npm run dev
-
-# Full stack
-docker compose up
 ```
 
 ## Phase Roadmap
 
-- **Phase 0** — Scaffold + model download (current)
-- **Phase 1A** — Audio ingestion pipeline
-- **Phase 1B** — AASIST inference
-- **Phase 1C** — Layers 2–4
-- **Phase 1D** — Liveness challenge
-- **Phase 1E** — Ensemble scoring + WebSocket streaming
-- **Phase 2** — React dashboard
+Full plan: https://vishalvivek2007.github.io/Dhvani-kavach-plan/ (9 phases, 38 steps).
+Status legend: ✅ done · ⚠️ partial · ❌ not started.
+
+| Phase | Scope | Status |
+|---|---|---|
+| **0** Foundation | Monorepo scaffold, deps, AASIST weights, Docker skeleton | ✅ |
+| **1A** Spectrogram pipeline | Audio I/O, mel-spectrogram, handcrafted features | ✅ |
+| **1B** Detection layers | AASIST + MFCC, breath, phase-coherence, liveness | ✅ |
+| **1C** Ensemble | Weighted vote, GREEN/AMBER/RED banding (Redis pub/sub pending) | ⚠️ |
+| **2A** FastAPI backend | `/health`, `POST /api/analyze`, `GET /api/challenge`, `ws /ws/analyze` | ✅ |
+| **2B** Streaming pipeline | Backend 10s sliding-window detection over `ws /ws/analyze` ✅ (currently unused by the UI; Redis fan-out + liveness-WS pending) | ⚠️ |
+| **3A** Dashboard core | Risk gauge + file-upload analysis UI (Vite). A live-WebSocket streaming dashboard was built then **intentionally replaced** by this simpler UI | ⚠️ |
+| **3B** Dashboard polish | Per-layer breakdown shown; live mic capture + alert history removed in the UI simplification; scenario switcher not built | ⚠️ |
+| **4** Docker + demo | Production Docker, demo audio pack, smoke test, perf validation | ❌ |
+
+> **Note:** the frontend was deliberately simplified to a Vite file-upload UI (`POST /api/analyze`). The streaming backend (`ws /ws/analyze`) stays available for a future live dashboard but is not currently wired to the UI.
+
+See [`HANDOFF.md`](HANDOFF.md) for full status, function reference, and open decisions.
