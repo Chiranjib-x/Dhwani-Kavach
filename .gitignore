@@ -8,7 +8,10 @@ frontend/dist/
 .DS_Store
 *.log
 backend/models/deepfake_w2v.pt
+backend/models/deepfake_w2v_v1.pt
 opencode.json
+Dhwani-Kavach_ERROR404*.pptx
+kitten_fakes/
 backend/audit_log.jsonl
 backend/voiceprints.db
 backend/labels.db
