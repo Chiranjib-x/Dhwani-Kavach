@@ -1,0 +1,497 @@
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#0F1117; --line:rgba(255,255,255,.08);
+    --text:#F1F5F9; --muted:#7A8699; --cyan:#5EEAD4; --ok:#22C55E; --warn:#F59E0B; --threat:#FF4D6D;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; --sans:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans)}
+  .deck{height:100vh;width:100vw;overflow:hidden;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+    padding:5.5vh 7vw;animation:fade .35s ease}
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.26em;color:var(--cyan);text-transform:uppercase;margin-bottom:16px}
+  h1{font-size:clamp(30px,4.4vw,60px);line-height:1.05;letter-spacing:-.02em;font-weight:700}
+  h2{font-size:clamp(22px,3.1vw,40px);line-height:1.1;letter-spacing:-.015em;font-weight:700;margin-bottom:22px}
+  h3{font-size:clamp(14px,1.45vw,18px);color:var(--cyan);font-weight:600;margin:0 0 8px}
+  p,li{font-size:clamp(13px,1.35vw,18px);line-height:1.5;color:#CBD5E1}
+  .lead{font-size:clamp(16px,1.8vw,23px);color:var(--text);max-width:62ch}
+  .muted{color:var(--muted)}
+  .big{color:var(--text);font-weight:700}
+  ul{list-style:none;display:grid;gap:12px;margin-top:6px}
+  li{position:relative;padding-left:24px}
+  li::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:8px;border-radius:2px;background:var(--cyan)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card h3{margin-bottom:6px}
+  .stat{font-family:var(--mono);font-size:clamp(24px,3.2vw,42px);font-weight:700;line-height:1}
+  .flow{display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-family:var(--mono);font-size:13px;margin-top:8px}
+  .node{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px}
+  .node.acc{border-color:var(--cyan);color:var(--cyan)}
+  .arrow{color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:clamp(11px,1.15vw,15px);margin-top:6px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;font-weight:500}
+  td.us{color:var(--cyan);font-weight:600}
+  .yes{color:var(--ok)} .no{color:var(--threat)} .mid{color:var(--warn)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+  .band{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .band span{font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:8px}
+  .g{background:rgba(34,197,94,.12);color:var(--ok)} .a{background:rgba(245,158,11,.12);color:var(--warn)} .r{background:rgba(255,77,109,.12);color:var(--threat)}
+  .foot{position:absolute;left:7vw;right:7vw;bottom:3vh;display:flex;justify-content:space-between;
+    font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .timeline{display:grid;gap:0}
+  .tl{display:grid;grid-template-columns:120px 1fr;gap:18px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .tl .when{font-family:var(--mono);color:var(--cyan);font-size:13px}
+  .center{align-items:center;text-align:center}
+  .center ul{justify-items:center;text-align:left}
+  .code{font-family:var(--mono);font-size:clamp(12px,1.2vw,15px);line-height:1.7;color:#CBD5E1;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:14px 16px;white-space:pre;display:inline-block}
+  .trl{display:flex;gap:6px;align-items:flex-end;height:74px;margin:12px 0}
+  .trl div{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .trl div.on{background:linear-gradient(180deg,rgba(94,234,212,.25),rgba(94,234,212,.05));border-color:var(--cyan);color:var(--cyan)}
+  .nav{position:fixed;bottom:14px;right:16px;font-family:var(--mono);font-size:12px;color:var(--muted);z-index:10}
+  .hint{position:fixed;bottom:14px;left:16px;font-family:var(--mono);font-size:11px;color:var(--muted);z-index:10;opacity:.55}
+  @media print{.slide{display:flex!important;position:relative;inset:auto;height:100vh;page-break-after:always;animation:none}.nav,.hint{display:none}}
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide active center">
+    <div class="kicker">Real-time AI voice-fraud defense for banks</div>
+    <h1>Dhwani&#8209;Kavach</h1>
+    <p class="lead" style="margin-top:18px">A real-time <span class="big">call-fraud shield</span> that stops AI voice clones <span class="big">and</span> human scam calls — on the bank&rsquo;s own network, in under four seconds.</p>
+    <div class="band" style="justify-content:center"><span class="g">GREEN&nbsp;·&nbsp;genuine</span><span class="a">AMBER&nbsp;·&nbsp;review</span><span class="r">RED&nbsp;·&nbsp;block</span></div>
+    <p style="margin-top:24px;font-family:var(--mono);font-size:15px;letter-spacing:.18em;color:var(--cyan)">TEAM&nbsp;&nbsp;ERROR&nbsp;404</p>
+    <p class="muted" style="margin-top:8px;font-family:var(--mono);font-size:13px">Innovation &amp; Entrepreneurship panel &middot; IIT Kharagpur</p>
+  </section>
+
+  <!-- 2 AGENDA -->
+  <section class="slide">
+    <div class="kicker">Agenda</div>
+    <h2>What we&rsquo;ll cover</h2>
+    <ul style="font-size:clamp(15px,1.7vw,21px);gap:16px">
+      <li>The problem — why voice is a bank&rsquo;s weakest channel</li>
+      <li>Our solution — the call-fraud shield &amp; how it works</li>
+      <li>Deep dive — each detection layer, the model, the training</li>
+      <li>Uniqueness, benchmarks &amp; technical moat</li>
+      <li>Deployability, governance &amp; honest limitations</li>
+      <li>Live demo &middot; TRL &middot; roadmap &middot; integration &middot; Q&amp;A</li>
+    </ul>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>AGENDA</span></div>
+  </section>
+
+  <!-- 3 PROBLEM -->
+  <section class="slide">
+    <div class="kicker">Problem statement</div>
+    <h2>Voice is now a bank&rsquo;s weakest channel</h2>
+    <div class="grid2">
+      <div><ul>
+        <li><span class="big">Voice cloning is trivial.</span> Seconds of a customer&rsquo;s or RM&rsquo;s voice &rarr; a clone that authorises transfers.</li>
+        <li><span class="big">Most vishing needs no deepfake.</span> A real human scammer coerces a real customer &mdash; the larger share of losses.</li>
+        <li><span class="big">The money moves during the call.</span> Post-call detection is too late.</li>
+        <li><span class="big">Volume &amp; languages.</span> Millions of calls in Hindi/English/code-mixed &mdash; humans can&rsquo;t screen them.</li>
+      </ul></div>
+      <div class="card">
+        <h3 style="color:var(--threat)">Why current defenses fail</h3>
+        <p style="margin-top:8px"><span class="no">&times;</span> <b>OTP</b> — the victim reads it out under pressure.</p>
+        <p style="margin-top:10px"><span class="no">&times;</span> <b>Voice biometrics</b> — a good clone passes; can&rsquo;t judge a coerced caller.</p>
+        <p style="margin-top:10px"><span class="no">&times;</span> <b>Manual agents</b> — can&rsquo;t hear a deepfake or catch a practised scammer.</p>
+      </div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE PROBLEM</span></div>
+  </section>
+
+  <!-- 4 TWO ATTACK VECTORS -->
+  <section class="slide">
+    <div class="kicker">The threat, precisely</div>
+    <h2>Two attack vectors — most tools see only one</h2>
+    <div class="grid2">
+      <div class="card" style="border-color:rgba(94,234,212,.35)">
+        <h3>1 &middot; Synthetic voice (deepfake)</h3>
+        <p>An AI clone of a real person&rsquo;s voice. Sounds like the customer or RM. Passes voice biometrics. Used to authorise transfers or reset credentials.</p>
+        <p style="margin-top:10px;color:var(--cyan)">Detected by our neural voice engine.</p>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.35)">
+        <h3 style="color:var(--warn)">2 &middot; Human social engineering</h3>
+        <p>A real human scammer with a script: urgency, authority impersonation, isolation, OTP requests, threats. No deepfake &mdash; so deepfake-only detectors score it <b>safe</b>.</p>
+        <p style="margin-top:10px;color:var(--warn)">Detected by our scam-script LLM layer.</p>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:20px">A real defense must cover <span class="big">both</span>. That is the core of our design.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE THREAT</span></div>
+  </section>
+
+  <!-- 5 INSIGHT -->
+  <section class="slide center">
+    <div class="kicker">The insight</div>
+    <h2 style="max-width:22ch">We didn&rsquo;t build a deepfake detector.<br>We built a fraud shield.</h2>
+    <p class="lead">A deepfake detector is a commodity and it is <span class="big">narrow</span>. The fraud that drains accounts is <span class="big">broader</span> — clones <b>and</b> human scam scripts, on real phone lines, in Indian languages.</p>
+    <p class="lead" style="margin-top:16px;color:var(--cyan)">Our edge is everything a detector <i>isn&rsquo;t</i>: the decision, the deployment, and the intelligence around it.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE INSIGHT</span></div>
+  </section>
+
+  <!-- 6 SOLUTION OVERVIEW -->
+  <section class="slide">
+    <div class="kicker">Our solution</div>
+    <h2>One decision per call: Monitor / Challenge / Block</h2>
+    <div class="flow">
+      <span class="node">Live audio</span><span class="arrow">&rarr;</span>
+      <span class="node">Voice deepfake (5-layer)</span><span class="arrow">+</span>
+      <span class="node">Scam-script (STT&rarr;LLM)</span><span class="arrow">+</span>
+      <span class="node">Novelty</span><span class="arrow">+</span>
+      <span class="node">Voiceprint / campaign</span><span class="arrow">&rarr;</span>
+      <span class="node acc">Fusion + txn context</span><span class="arrow">&rarr;</span>
+      <span class="node acc">MONITOR / CHALLENGE / BLOCK</span>
+    </div>
+    <div class="grid3" style="margin-top:26px">
+      <div class="card"><div class="stat" style="color:var(--cyan)">~4s</div><p class="muted" style="margin-top:8px">first verdict, mid-call</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">5+LLM</div><p class="muted" style="margin-top:8px">layers, fused &amp; explainable</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">0</div><p class="muted" style="margin-top:8px">audio stored — verdict only</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>SOLUTION OVERVIEW</span></div>
+  </section>
+
+  <!-- 7 ARCHITECTURE -->
+  <section class="slide">
+    <div class="kicker">How it works</div>
+    <h2>A layered, fail-safe pipeline</h2>
+    <div class="grid2">
+      <div class="card"><h3>Two entry points, one engine</h3><p>Live WebSocket stream (4s window / 2s hop) &amp; REST file upload run the same detection engine.</p></div>
+      <div class="card"><h3>Fail-safe composition</h3><p>Every advanced layer is additive: if STT, the LLM, or the model file is missing, that layer returns neutral and the core verdict still ships.</p></div>
+      <div class="card"><h3>Real-time under load</h3><p>Inference runs off the event loop; only the newest window is scored (backlog discarded) so a slow CPU never floods the client.</p></div>
+      <div class="card"><h3>Explainable output</h3><p>Every verdict: 0&ndash;100 score, per-layer breakdown, scam tactics, novelty, campaign match, and a plain-English reason.</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>ARCHITECTURE</span></div>
+  </section>
+
+  <!-- 8 DETECTION LAYERS -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; voice engine</div>
+    <h2>Five layers vote; the neural model leads</h2>
+    <table>
+      <tr><th>Layer</th><th>Weight</th><th>What it measures</th></tr>
+      <tr><td class="us">Neural (wav2vec2 SSL)</td><td>0.80</td><td>learned deepfake signature — the primary verdict</td></tr>
+      <tr><td>Spectral / MFCC</td><td>0.07</td><td>handcrafted spectral biometrics</td></tr>
+      <tr><td>Breath pattern</td><td>0.03</td><td>natural breath energy a synth often lacks</td></tr>
+      <tr><td>Phase coherence</td><td>0.05</td><td>phase artifacts of vocoded audio</td></tr>
+      <tr><td>Liveness</td><td>0.05</td><td>articulation / liveness cues</td></tr>
+    </table>
+    <ul style="margin-top:16px">
+      <li>Weighted ensemble &rarr; 0&ndash;100 risk. Bands: <span style="color:var(--ok)">GREEN &lt;40</span> &middot; <span style="color:var(--warn)">AMBER 40&ndash;69</span> &middot; <span style="color:var(--threat)">RED &ge;70</span>.</li>
+      <li>Worst 4-second window drives the verdict; silence gated; long calls strided for bounded latency.</li>
+    </ul>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>DETECTION LAYERS</span></div>
+  </section>
+
+  <!-- 9 MODEL + TRAINING -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; model &amp; training</div>
+    <h2>wav2vec2 SSL — trained through real failures</h2>
+    <p class="muted" style="margin-bottom:6px">wav2vec2-base (self-supervised) &rarr; mean-pool 768-d &rarr; MLP head &rarr; softmax. SSL pretraining generalises where a from-scratch CNN doesn&rsquo;t.</p>
+    <table>
+      <tr><th>Stage</th><th>Data added</th><th>Result</th><th>Fixed</th></tr>
+      <tr><td>CNN baseline</td><td>ASVspoof 2019 LA</td><td>2.75% dev</td><td class="no">9.75% unseen</td></tr>
+      <tr><td>SSL v1</td><td>+ noise/gain aug</td><td>0.40% dev</td><td>false-flagged reals</td></tr>
+      <tr><td>SSL v2</td><td>+ real Hindi voices</td><td>0.13% dev</td><td>broadened &ldquo;real&rdquo;</td></tr>
+      <tr><td>SSL v3</td><td>+ in-the-wild + your clones</td><td>~5.2% modern</td><td>realistic hard eval</td></tr>
+      <tr><td class="us">SSL v4 (deployed)</td><td>+ telephony augmentation</td><td class="us">4% clean / 6% phone</td><td>works on phone lines</td></tr>
+    </table>
+    <p class="muted" style="margin-top:12px;font-size:13px">Honest: EERs are on different dev sets &mdash; not directly comparable. A single fixed benchmark is next.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>MODEL &amp; TRAINING</span></div>
+  </section>
+
+  <!-- 10 SCAM + MULTILINGUAL -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; scam-script layer</div>
+    <h2>Catching the human scammer</h2>
+    <ul style="font-size:clamp(14px,1.5vw,19px)">
+      <li>Pipeline: rolling audio &rarr; <b>Whisper</b> speech-to-text &rarr; <b>Nemotron LLM</b> &rarr; scam score + tactics.</li>
+      <li>Tactics: <span class="pill">urgency</span> <span class="pill">authority impersonation</span> <span class="pill">isolation</span> <span class="pill">new-beneficiary</span> <span class="pill">OTP/PIN request</span> <span class="pill">threat</span></li>
+      <li>Runs in the background every ~4s over the last ~8s — never blocks the 2s detection cadence.</li>
+      <li><span class="big">Multilingual:</span> Whisper auto-detects language; the LLM reasons in Hindi &amp; Hinglish. Verified: Hindi scam &rarr; <span style="color:var(--warn)">90/100</span>.</li>
+      <li>Fail-safe: no key / no STT / offline &rarr; neutral; voice detection unaffected.</li>
+    </ul>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>SCAM-SCRIPT</span></div>
+  </section>
+
+  <!-- 11 FUSION -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; decision fusion</div>
+    <h2>From scores to an auditable decision</h2>
+    <div class="grid2" style="align-items:center">
+      <div>
+        <div class="code">threat = voice&ge;70 OR scam&ge;70 OR novelty&ge;0.6
+high_value = new payee OR amount &ge; &#8377;50,000
+
+<span style="color:#FF4D6D">BLOCK</span>      if threat AND high_value
+<span style="color:#F59E0B">CHALLENGE</span>  if threat
+<span style="color:#22C55E">MONITOR</span>    otherwise</div>
+      </div>
+      <div><ul>
+        <li>Transaction context makes the response <b>proportionate</b> — a suspicious voice on a balance check &ne; on a &#8377;5-lakh transfer.</li>
+        <li><b>Rule-based on purpose:</b> every decision is defensible to an auditor. A learned policy needs outcome data we must first accumulate.</li>
+        <li>Each action ships a plain-English reason; thresholds tune to risk appetite.</li>
+      </ul></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>DECISION FUSION</span></div>
+  </section>
+
+  <!-- 12 NOVELTY + CAMPAIGNS -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; novelty &amp; campaigns</div>
+    <h2>Zero-day defense &amp; fraud-ring intelligence</h2>
+    <div class="grid2">
+      <div class="card"><h3>Novelty / zero-day</h3><p>Uses the model&rsquo;s own uncertainty: <span style="font-family:var(--mono)">novelty = 1&minus;|2p&minus;1|</span>. A signature unlike anything trained on lifts GREEN &rarr; AMBER.</p><p style="margin-top:8px" class="muted">Catches the clone tool that doesn&rsquo;t exist yet. (Heuristic; embedding-OOD is the upgrade.)</p></div>
+      <div class="card"><h3>Campaign detection</h3><p>Each call gets a 768-d voiceprint (same forward pass, free). Cosine-match links the same voice across calls into a campaign; a prior-fraud voiceprint is blocklisted on its next call.</p><p style="margin-top:8px;color:var(--cyan)">&ldquo;The same synthetic voice hit 14 customers.&rdquo;</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>NOVELTY &amp; CAMPAIGNS</span></div>
+  </section>
+
+  <!-- 13 TELEPHONY -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; telephony robustness</div>
+    <h2>It works on real phone lines</h2>
+    <ul>
+      <li>Real calls are 8&nbsp;kHz, band-limited (300&ndash;3400&nbsp;Hz), G.711 &micro;-law companded, and lossy.</li>
+      <li>We degrade training audio to phone quality (codec + packet loss) so the model <b>learns telephony</b> — not just clean mics.</li>
+      <li>Result: <b>clean 4% vs phone 6% EER</b> — a ~2-point gap where un-augmented models show a cliff.</li>
+      <li>Proven live: a clone through an 8&nbsp;kHz phone filter still reads <span style="color:var(--threat)">RED</span>.</li>
+    </ul>
+    <div class="grid2" style="margin-top:18px">
+      <div class="card"><div class="stat" style="color:var(--cyan)">4% &rarr; 6%</div><p class="muted" style="margin-top:8px">clean &rarr; phone-line EER (small gap = robust)</p></div>
+      <div class="card"><div class="stat" style="color:var(--warn)">8kHz / G.711</div><p class="muted" style="margin-top:8px">the format your call centre actually runs</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>TELEPHONY</span></div>
+  </section>
+
+  <!-- 14 UNIQUENESS -->
+  <section class="slide">
+    <div class="kicker">Uniqueness</div>
+    <h2>What only we do</h2>
+    <div class="grid3">
+      <div class="card"><h3>Human-scam detection</h3><p>Flags scripted scams even when the voice is real.</p></div>
+      <div class="card"><h3>Works on real phone lines</h3><p>Trained on 8&nbsp;kHz / G.711 telephony.</p></div>
+      <div class="card"><h3>Fraud-campaign intelligence</h3><p>Links calls from the same synthetic voice.</p></div>
+      <div class="card"><h3>On-prem, no audio stored</h3><p>Runs inside the bank; nothing retained.</p></div>
+      <div class="card"><h3>Zero-day / novelty</h3><p>Flags synthesis signatures never seen.</p></div>
+      <div class="card"><h3>Multilingual</h3><p>Hindi, Hinglish, regional out of the box.</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>UNIQUENESS</span></div>
+  </section>
+
+  <!-- 15 BENCHMARKS -->
+  <section class="slide">
+    <div class="kicker">Comparison with benchmarks</div>
+    <h2>Detector accuracy is table-stakes; the gap is everything else</h2>
+    <table>
+      <tr><th>Capability</th><th>Academic (AASIST/RawNet2)</th><th>Commercial cloud</th><th>Dhwani-Kavach</th></tr>
+      <tr><td>ASVspoof dev EER</td><td>~1%</td><td>n/a</td><td class="us">0.13%</td></tr>
+      <tr><td>Modern / in-the-wild fakes</td><td class="no">degrades (20&ndash;40%)</td><td class="mid">good</td><td class="us">~4&ndash;6% EER</td></tr>
+      <tr><td>Telephony (8&nbsp;kHz)</td><td class="no">usually untested</td><td class="mid">varies</td><td class="us">6% EER (trained for it)</td></tr>
+      <tr><td>Human scam (no deepfake)</td><td class="no">&times;</td><td class="no">&times;</td><td class="us yes">&#10003; LLM layer</td></tr>
+      <tr><td>Deployment</td><td class="no">research code</td><td class="no">cloud API</td><td class="us yes">on-prem Docker</td></tr>
+      <tr><td>Explainability &amp; governance</td><td class="no">&times;</td><td class="mid">limited</td><td class="us yes">&#10003; built-in</td></tr>
+      <tr><td>Campaign / fraud-ring intel</td><td class="no">&times;</td><td class="mid">some</td><td class="us yes">&#10003;</td></tr>
+    </table>
+    <p class="muted" style="margin-top:12px;font-size:13px">Academic SOTA wins on ASVspoof but generalises poorly cross-dataset. We optimise for the real deployment, not the leaderboard.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>BENCHMARKS</span></div>
+  </section>
+
+  <!-- 16 MOAT -->
+  <section class="slide">
+    <div class="kicker">Technical moat</div>
+    <h2>Advantages that compound</h2>
+    <div class="grid2">
+      <div><ul>
+        <li><span class="big">Data network effect.</span> Every call adds a voiceprint; the blocklist gets smarter with use — on the bank&rsquo;s own data a competitor can&rsquo;t replicate.</li>
+        <li><span class="big">Generator-diverse training.</span> Real Indian voices + multiple deepfake families + telephony &rarr; generalises.</li>
+        <li><span class="big">Model-agnostic scam layer.</span> New scripts &rarr; a prompt change, not a retrain.</li>
+      </ul></div>
+      <div><ul>
+        <li><span class="big">Novelty / self-guarding.</span> Flags unknown synthesis; confirmed frauds feed the blocklist.</li>
+        <li><span class="big">Governance as a moat.</span> Built-in model-risk monitoring is what banks legally require and vendors lack.</li>
+        <li><span class="big">On-prem trust.</span> No audio leaving the bank is a structural edge under RBI localisation.</li>
+      </ul></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>TECHNICAL MOAT</span></div>
+  </section>
+
+  <!-- 17 ENGINEERING -->
+  <section class="slide">
+    <div class="kicker">Engineering rigor</div>
+    <h2>Hardened, not a notebook demo</h2>
+    <div class="grid3">
+      <div class="card"><h3>Fail-safe composition</h3><p>Advanced layers degrade to neutral; the core verdict always survives a missing dependency.</p></div>
+      <div class="card"><h3>Real-time backpressure</h3><p>Only the newest window is scored; off-thread inference. A slow CPU can&rsquo;t stall or flood the stream.</p></div>
+      <div class="card"><h3>Runtime conflict solved</h3><p>Diagnosed &amp; fixed an OpenMP clash (torch + Whisper) that crashed the process — now stable.</p></div>
+      <div class="card"><h3>No-audio principle</h3><p>Audio scored in memory &amp; discarded; only verdicts + transcripts persist.</p></div>
+      <div class="card"><h3>Verdict stability</h3><p>Peak-hold with decay smooths per-window jitter so a flagged call stays flagged.</p></div>
+      <div class="card"><h3>Bounded latency</h3><p>60s call scored in ~6s; chunk caps keep long calls responsive.</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>ENGINEERING</span></div>
+  </section>
+
+  <!-- 18 DEPLOYABILITY -->
+  <section class="slide">
+    <div class="kicker">Deployability in banking infrastructure</div>
+    <h2>Drops in beside your stack — no rip-and-replace</h2>
+    <div class="flow">
+      <span class="node">Caller</span><span class="arrow">&rarr;</span>
+      <span class="node">Telephony (Genesys / Avaya / Cisco)</span><span class="arrow">&rarr;</span>
+      <span class="node">SIPREC / media-fork</span><span class="arrow">&rarr;</span>
+      <span class="node acc">Dhwani-Kavach (on-prem Docker)</span><span class="arrow">&rarr;</span>
+      <span class="node">Agent / Fraud engine</span>
+    </div>
+    <div class="grid3" style="margin-top:24px">
+      <div class="card"><h3>On-prem &amp; private</h3><p>Docker in your DMZ. No audio or call data leaves the bank. RBI data-localisation clean.</p></div>
+      <div class="card"><h3>Standard integration</h3><p>SIPREC audio fork &rarr; WebSocket/REST API. Same JSON verdict to agent UI or decisioning engine.</p></div>
+      <div class="card"><h3>Runs like any service</h3><p>Stateless, scales horizontally, CPU-viable, Prometheus metrics, health probes.</p></div>
+    </div>
+    <p class="muted" style="margin-top:16px;font-size:14px">Security: API-key / mTLS, TLS, locked CORS, append-only audit trail — <b>no audio retained</b>.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>DEPLOYABILITY</span></div>
+  </section>
+
+  <!-- 19 GOVERNANCE -->
+  <section class="slide">
+    <div class="kicker">Adoption &amp; trust</div>
+    <h2>Built to be piloted, audited, and governed</h2>
+    <div class="grid3">
+      <div class="card"><h3>Shadow mode</h3><p>Score &amp; log every call, take no action, for 30 days. Measure detection &amp; false-alarm rates on your own traffic, then flip one switch to enforce.</p></div>
+      <div class="card"><h3>Evidence &amp; audit</h3><p>Every verdict is an append-only record with a forensic evidence pack (tactics, transcript, decision). No audio.</p></div>
+      <div class="card"><h3>Model governance</h3><p>Live detection / false-alarm rates, drift alerts, champion/challenger registry — RBI Model Risk Management, built in.</p></div>
+    </div>
+    <p class="lead" style="margin-top:22px">This is how banks safely adopt AI: <span class="big">prove it risk-free, then enforce.</span></p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>TRUST &amp; GOVERNANCE</span></div>
+  </section>
+
+  <!-- 20 LIMITATIONS -->
+  <section class="slide">
+    <div class="kicker">Honest limitations &amp; future work</div>
+    <h2>What&rsquo;s a v1 today — and the upgrade path</h2>
+    <div class="grid2">
+      <div><ul>
+        <li>Thresholds (voiceprint 0.85, fusion cut-offs) are sensible defaults &rarr; <b>calibrate on real traffic</b> in a pilot.</li>
+        <li>Novelty is a softmax-uncertainty heuristic &rarr; <b>embedding-distance OOD</b>.</li>
+        <li>Campaign store is a linear scan &rarr; <b>FAISS / pgvector</b> at scale.</li>
+        <li>EERs on differing dev sets &rarr; <b>one fixed benchmark</b> with CIs.</li>
+      </ul></div>
+      <div><ul>
+        <li>LLM is a cloud call &rarr; same Nemotron as an <b>on-prem NIM container</b> (base-URL change).</li>
+        <li>Customer voice-identity (is it <i>this</i> customer?) not yet built — <b>the next layer</b>.</li>
+        <li>Adversarial-evasion robustness untested — <b>on the roadmap</b>.</li>
+      </ul></div>
+    </div>
+    <p class="lead" style="margin-top:16px;color:var(--cyan)">We&rsquo;d rather show you the roadmap than pretend it&rsquo;s finished.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>LIMITATIONS</span></div>
+  </section>
+
+  <!-- 21 DEMO BRIDGE -->
+  <section class="slide center">
+    <div class="kicker">Live product demo</div>
+    <h1 style="font-size:clamp(28px,3.8vw,52px)">See it on a live call</h1>
+    <ul style="margin-top:24px;max-width:62ch">
+      <li>Real voice &rarr; <span class="yes">GREEN</span>. My clone &rarr; <span class="no">RED</span>, mid-call.</li>
+      <li>A scam script in my <b>real</b> voice &rarr; tactics light up, action escalates.</li>
+      <li>The same clone through an <b>8&nbsp;kHz phone filter</b> &rarr; still <span class="no">RED</span>.</li>
+      <li>Backend product pages: audit / evidence &middot; campaigns &middot; governance &middot; metrics.</li>
+    </ul>
+    <p class="muted" style="margin-top:22px;font-family:var(--mono);font-size:13px">Running locally, on-prem — no internet dependency for detection.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>DEMO</span></div>
+  </section>
+
+  <!-- 22 TRL -->
+  <section class="slide">
+    <div class="kicker">TRL justification</div>
+    <h2>Technology Readiness Level 5 &rarr; 6</h2>
+    <div class="trl">
+      <div>1</div><div>2</div><div>3</div><div>4</div><div class="on">5</div><div class="on">6</div><div>7</div><div>8</div><div>9</div>
+    </div>
+    <div class="grid2">
+      <div><h3>Why TRL 5&ndash;6</h3><ul>
+        <li>Full working prototype, end-to-end, real-time.</li>
+        <li>Validated on realistic data: ASVspoof + real Indian voices + modern fakes + telephony (4% / 6%).</li>
+        <li>Deployable artifact: on-prem Docker, API, governance, metrics.</li>
+      </ul></div>
+      <div><h3>Path to TRL 7&ndash;8</h3><ul>
+        <li>Shadow-mode pilot on a bank queue &rarr; operational-environment validation.</li>
+        <li>Calibrate thresholds on real traffic; measure live TPR/FPR.</li>
+        <li>SIPREC adapter + mTLS hardening for production.</li>
+      </ul></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>TRL</span></div>
+  </section>
+
+  <!-- 23 ROADMAP -->
+  <section class="slide">
+    <div class="kicker">Project timeline &amp; roadmap</div>
+    <h2>What we built — and what&rsquo;s next</h2>
+    <div class="timeline">
+      <div class="tl"><span class="when">Done</span><span>Core shield: 5-layer deepfake engine (wav2vec2), scam-script LLM, decision fusion, novelty, audit.</span></div>
+      <div class="tl"><span class="when">Done</span><span>Edge phases: shadow-mode pilot, multilingual, evidence packs, fraud-campaign detection, governance.</span></div>
+      <div class="tl"><span class="when">Done</span><span>Telephony-robust retrain deployed &mdash; 4% clean / 6% phone-line EER.</span></div>
+      <div class="tl"><span class="when">Next</span><span>Customer voice-identity + liveness; embedding-based novelty; broader generator diversity.</span></div>
+      <div class="tl"><span class="when">Bank PoC</span><span>30-day shadow pilot &rarr; threshold calibration &rarr; enforce &rarr; production integration.</span></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>ROADMAP</span></div>
+  </section>
+
+  <!-- 24 INTEGRATION -->
+  <section class="slide">
+    <div class="kicker">Integration with existing systems</div>
+    <h2>Three plug-in points, one API</h2>
+    <div class="grid3">
+      <div class="card"><h3>Contact centre (primary)</h3><p>SIPREC fork of the live call &rarr; risk badge on the agent screen &amp; a RED signal into the fraud engine to auto-trigger step-up auth.</p></div>
+      <div class="card"><h3>Voice-biometric anti-spoof</h3><p>Runs in front of voice auth: biometrics say &ldquo;it&rsquo;s customer X&rdquo;, we say &ldquo;and it&rsquo;s a live human, not a clone.&rdquo;</p></div>
+      <div class="card"><h3>Recorded / dispute review</h3><p>Batch-score recorded calls &amp; voicenotes via REST for investigations.</p></div>
+    </div>
+    <p class="lead" style="margin-top:20px">Same verdict contract everywhere: <span class="pill">risk_score</span> <span class="pill">alert_level</span> <span class="pill">action</span> <span class="pill">tactics</span> <span class="pill">campaign</span></p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>INTEGRATION</span></div>
+  </section>
+
+  <!-- 25 IMPACT -->
+  <section class="slide center">
+    <div class="kicker">Why it matters</div>
+    <h2 style="max-width:24ch">A deployable layer that closes the voice-fraud gap</h2>
+    <div class="grid3" style="width:100%;margin-top:6px">
+      <div class="card"><div class="stat" style="color:var(--ok)">Clones + scams</div><p class="muted" style="margin-top:8px">catches both, not just deepfakes</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">Real-time</div><p class="muted" style="margin-top:8px">acts before money moves</p></div>
+      <div class="card"><div class="stat" style="color:var(--warn)">On-prem</div><p class="muted" style="margin-top:8px">no audio leaves the bank</p></div>
+    </div>
+    <p class="lead" style="margin-top:24px">Built for how your calls, your customers, and your regulators <span class="big">actually work.</span></p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>IMPACT</span></div>
+  </section>
+
+  <!-- 26 THANK YOU -->
+  <section class="slide center">
+    <div class="kicker">Thank you</div>
+    <h1>Questions?</h1>
+    <p class="lead" style="margin-top:18px">Dhwani-Kavach &mdash; real-time call-fraud shield for banks.</p>
+    <p style="margin-top:18px;font-family:var(--mono);font-size:15px;letter-spacing:.18em;color:var(--cyan)">TEAM&nbsp;&nbsp;ERROR&nbsp;404</p>
+    <p class="muted" style="margin-top:8px;font-family:var(--mono);font-size:13px">Live demo &amp; technical deep-dive available on request.</p>
+  </section>
+
+</div>
+
+<div class="nav" id="nav">1 / 26</div>
+<div class="hint">&larr; &rarr; / space to navigate &middot; F fullscreen &middot; Ctrl+P &rarr; PDF</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0; const nav=document.getElementById('nav');
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    nav.textContent=(i+1)+' / '+slides.length;
+  }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();show(i+1)}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1)}
+    else if(e.key==='Home'){show(0)} else if(e.key==='End'){show(slides.length-1)}
+    else if(e.key.toLowerCase()==='f'){document.documentElement.requestFullscreen?.()}
+  });
+  document.getElementById('deck').addEventListener('click',e=>{ if(e.clientX > innerWidth*0.4) show(i+1); else show(i-1); });
+  show(0);
+</script>
