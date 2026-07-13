@@ -8,13 +8,6 @@ type Verdict = "PROTECTED" | "REVIEW" | "CRITICAL";
 
 const LAYERS = ["AASIST", "Spectral Biometrics", "Breath Pattern", "Phase Coherence", "Active Liveness"];
 
-function classify(name: string): { base: number; verdict: Verdict; range: [number, number] } {
-  const n = name.toLowerCase();
-  if (n.includes("real") || n.includes("human")) return { base: 8, verdict: "PROTECTED", range: [5, 15] };
-  if (n.includes("elevenlabs") || n.includes("clone")) return { base: 94, verdict: "CRITICAL", range: [88, 99] };
-  return { base: 67, verdict: "REVIEW", range: [55, 78] };
-}
-
 const verdictColor = (v: Verdict) => (v === "PROTECTED" ? "#22C55E" : v === "CRITICAL" ? "#FF4D6D" : "#F59E0B");
 type Action = "MONITOR" | "CHALLENGE" | "BLOCK";
 const actionColor = (a?: Action) => (a === "BLOCK" ? "#FF4D6D" : a === "CHALLENGE" ? "#F59E0B" : "#22C55E");

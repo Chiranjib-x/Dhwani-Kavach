@@ -1,0 +1,602 @@
+{
+  "clean": {
+    "n_real": 15,
+    "n_fake": 15,
+    "t_op": 0.72,
+    "configs": {
+      "neural": {
+        "eer": 0.13333333333333333,
+        "t_eer": 0.96,
+        "auc": 0.9733333333333334,
+        "far": 0.0,
+        "frr": 0.3333333333333333,
+        "acc": 0.8333333333333334,
+        "n_fake": 15,
+        "n_real": 15
+      },
+      "ensemble": {
+        "eer": 0.03333333333333333,
+        "t_eer": 0.611,
+        "auc": 0.9955555555555555,
+        "far": 1.0,
+        "frr": 0.0,
+        "acc": 0.5,
+        "n_fake": 15,
+        "n_real": 15
+      }
+    },
+    "latency_ms_p50": 2315.3017000040563,
+    "rows": [
+      {
+        "file": "ls_00.wav",
+        "neural": 0.13497363030910492,
+        "ensemble": 0.21,
+        "novelty": 0.848,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5196.500099998957
+      },
+      {
+        "file": "ls_01.wav",
+        "neural": 0.2792408764362335,
+        "ensemble": 0.27,
+        "novelty": 0.706,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1287.7943999992567
+      },
+      {
+        "file": "ls_02.wav",
+        "neural": 0.8262866735458374,
+        "ensemble": 0.53,
+        "novelty": 0.347,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5603.856000001542
+      },
+      {
+        "file": "ls_03.wav",
+        "neural": 0.8082327246665955,
+        "ensemble": 0.52,
+        "novelty": 0.384,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3335.7584999976098
+      },
+      {
+        "file": "ls_04.wav",
+        "neural": 0.8095847368240356,
+        "ensemble": 0.53,
+        "novelty": 0.381,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 14540.010000004258
+      },
+      {
+        "file": "ls_05.wav",
+        "neural": 0.9761472344398499,
+        "ensemble": 0.61,
+        "novelty": 0.048,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3432.918200000131
+      },
+      {
+        "file": "ls_06.wav",
+        "neural": 0.334614098072052,
+        "ensemble": 0.29,
+        "novelty": 0.669,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1339.4212999992305
+      },
+      {
+        "file": "ls_07.wav",
+        "neural": 0.6248359680175781,
+        "ensemble": 0.42,
+        "novelty": 0.75,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3369.9058999991394
+      },
+      {
+        "file": "ls_08.wav",
+        "neural": 0.0340864360332489,
+        "ensemble": 0.18,
+        "novelty": 0.952,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1263.8475999992806
+      },
+      {
+        "file": "ls_09.wav",
+        "neural": 0.9692145586013794,
+        "ensemble": 0.61,
+        "novelty": 0.062,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 8447.601199994097
+      },
+      {
+        "file": "ls_10.wav",
+        "neural": 0.1167307049036026,
+        "ensemble": 0.2,
+        "novelty": 0.873,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1270.5685999972047
+      },
+      {
+        "file": "ls_11.wav",
+        "neural": 0.6299880146980286,
+        "ensemble": 0.43,
+        "novelty": 0.74,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 6461.447900001076
+      },
+      {
+        "file": "ls_12.wav",
+        "neural": 0.2438880354166031,
+        "ensemble": 0.25,
+        "novelty": 0.723,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1236.160899999959
+      },
+      {
+        "file": "ls_13.wav",
+        "neural": 0.014596865512430668,
+        "ensemble": 0.17,
+        "novelty": 0.969,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2351.7110999964643
+      },
+      {
+        "file": "ls_14.wav",
+        "neural": 0.10264077037572861,
+        "ensemble": 0.23,
+        "novelty": 0.872,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1291.630100000475
+      },
+      {
+        "file": "vits_00.wav",
+        "neural": 0.9988535642623901,
+        "ensemble": 0.62,
+        "novelty": 0.007,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1319.0488999971421
+      },
+      {
+        "file": "vits_01.wav",
+        "neural": 0.9932739734649658,
+        "ensemble": 0.66,
+        "novelty": 0.013,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1230.3774999963935
+      },
+      {
+        "file": "vits_02.wav",
+        "neural": 0.9996819496154785,
+        "ensemble": 0.69,
+        "novelty": 0.887,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 4390.521900000749
+      },
+      {
+        "file": "vits_03.wav",
+        "neural": 0.9951978325843811,
+        "ensemble": 0.69,
+        "novelty": 0.978,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3418.787100003101
+      },
+      {
+        "file": "vits_04.wav",
+        "neural": 0.9964871406555176,
+        "ensemble": 0.7,
+        "novelty": 0.989,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 10510.694599994167
+      },
+      {
+        "file": "vits_05.wav",
+        "neural": 0.9984523057937622,
+        "ensemble": 0.65,
+        "novelty": 0.204,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2293.609500004095
+      },
+      {
+        "file": "vits_06.wav",
+        "neural": 0.992909848690033,
+        "ensemble": 0.65,
+        "novelty": 0.366,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1359.3725999962771
+      },
+      {
+        "file": "vits_07.wav",
+        "neural": 0.9995672106742859,
+        "ensemble": 0.65,
+        "novelty": 0.012,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2336.9939000040176
+      },
+      {
+        "file": "vits_08.wav",
+        "neural": 0.9648664593696594,
+        "ensemble": 0.65,
+        "novelty": 0.16,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1272.3919999989448
+      },
+      {
+        "file": "vits_09.wav",
+        "neural": 0.9964500665664673,
+        "ensemble": 0.69,
+        "novelty": 0.977,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5446.9253999996
+      },
+      {
+        "file": "vits_10.wav",
+        "neural": 0.959961473941803,
+        "ensemble": 0.61,
+        "novelty": 0.08,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1308.7704999998095
+      },
+      {
+        "file": "vits_11.wav",
+        "neural": 0.9984832406044006,
+        "ensemble": 0.71,
+        "novelty": 0.995,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5577.230199996848
+      },
+      {
+        "file": "vits_12.wav",
+        "neural": 0.9997267127037048,
+        "ensemble": 0.66,
+        "novelty": 0.012,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1279.377899998508
+      },
+      {
+        "file": "vits_13.wav",
+        "neural": 0.9962156414985657,
+        "ensemble": 0.65,
+        "novelty": 0.454,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2202.315800001088
+      },
+      {
+        "file": "vits_14.wav",
+        "neural": 0.9366388916969299,
+        "ensemble": 0.62,
+        "novelty": 0.127,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1266.5478999988409
+      }
+    ]
+  },
+  "telephony": {
+    "n_real": 15,
+    "n_fake": 15,
+    "t_op": 0.72,
+    "configs": {
+      "neural": {
+        "eer": 0.2,
+        "t_eer": 0.964,
+        "auc": 0.7911111111111111,
+        "far": 0.13333333333333333,
+        "frr": 0.7333333333333333,
+        "acc": 0.5666666666666667,
+        "n_fake": 15,
+        "n_real": 15
+      },
+      "ensemble": {
+        "eer": 0.2,
+        "t_eer": 0.621,
+        "auc": 0.8155555555555556,
+        "far": 1.0,
+        "frr": 0.0,
+        "acc": 0.5,
+        "n_fake": 15,
+        "n_real": 15
+      }
+    },
+    "latency_ms_p50": 2285.2271499978087,
+    "rows": [
+      {
+        "file": "ls_00.wav",
+        "neural": 0.4833035171031952,
+        "ensemble": 0.38,
+        "novelty": 0.967,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1246.5116000021226
+      },
+      {
+        "file": "ls_01.wav",
+        "neural": 0.07308167964220047,
+        "ensemble": 0.19,
+        "novelty": 0.762,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1282.9755999991903
+      },
+      {
+        "file": "ls_02.wav",
+        "neural": 0.9395056366920471,
+        "ensemble": 0.65,
+        "novelty": 0.932,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5350.812299999234
+      },
+      {
+        "file": "ls_03.wav",
+        "neural": 0.9821072220802307,
+        "ensemble": 0.62,
+        "novelty": 0.286,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3493.569199999911
+      },
+      {
+        "file": "ls_04.wav",
+        "neural": 0.9631308913230896,
+        "ensemble": 0.66,
+        "novelty": 0.935,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 13403.513900004327
+      },
+      {
+        "file": "ls_05.wav",
+        "neural": 0.9894750118255615,
+        "ensemble": 0.6,
+        "novelty": 0.021,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3281.2512000018614
+      },
+      {
+        "file": "ls_06.wav",
+        "neural": 0.9199641942977905,
+        "ensemble": 0.59,
+        "novelty": 0.193,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1272.0880999986548
+      },
+      {
+        "file": "ls_07.wav",
+        "neural": 0.5800869464874268,
+        "ensemble": 0.47,
+        "novelty": 0.84,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3382.139000001189
+      },
+      {
+        "file": "ls_08.wav",
+        "neural": 0.7258788347244263,
+        "ensemble": 0.55,
+        "novelty": 0.639,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1323.0008999962592
+      },
+      {
+        "file": "ls_09.wav",
+        "neural": 0.9722281098365784,
+        "ensemble": 0.64,
+        "novelty": 0.6,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 8390.641500001948
+      },
+      {
+        "file": "ls_10.wav",
+        "neural": 0.8871030807495117,
+        "ensemble": 0.56,
+        "novelty": 0.226,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1283.7294999990263
+      },
+      {
+        "file": "ls_11.wav",
+        "neural": 0.8067762851715088,
+        "ensemble": 0.59,
+        "novelty": 0.61,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 6384.276099997805
+      },
+      {
+        "file": "ls_12.wav",
+        "neural": 0.7478713989257812,
+        "ensemble": 0.55,
+        "novelty": 0.635,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1311.200000003737
+      },
+      {
+        "file": "ls_13.wav",
+        "neural": 0.4583117365837097,
+        "ensemble": 0.39,
+        "novelty": 0.917,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2301.085899998725
+      },
+      {
+        "file": "ls_14.wav",
+        "neural": 0.8447171449661255,
+        "ensemble": 0.6,
+        "novelty": 0.311,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1284.7220999974525
+      },
+      {
+        "file": "vits_00.wav",
+        "neural": 0.9962483048439026,
+        "ensemble": 0.65,
+        "novelty": 0.566,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1266.5307999996003
+      },
+      {
+        "file": "vits_01.wav",
+        "neural": 0.9953058362007141,
+        "ensemble": 0.65,
+        "novelty": 0.107,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1251.8356000000495
+      },
+      {
+        "file": "vits_02.wav",
+        "neural": 0.99753737449646,
+        "ensemble": 0.68,
+        "novelty": 0.995,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 4724.131800001487
+      },
+      {
+        "file": "vits_03.wav",
+        "neural": 0.9814410209655762,
+        "ensemble": 0.67,
+        "novelty": 0.977,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 3577.4460999964504
+      },
+      {
+        "file": "vits_04.wav",
+        "neural": 0.99299156665802,
+        "ensemble": 0.68,
+        "novelty": 0.991,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 10695.12759999634
+      },
+      {
+        "file": "vits_05.wav",
+        "neural": 0.9927476048469543,
+        "ensemble": 0.68,
+        "novelty": 0.983,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2278.4601999956067
+      },
+      {
+        "file": "vits_06.wav",
+        "neural": 0.970194935798645,
+        "ensemble": 0.65,
+        "novelty": 0.732,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1202.9202999983681
+      },
+      {
+        "file": "vits_07.wav",
+        "neural": 0.9689648747444153,
+        "ensemble": 0.66,
+        "novelty": 0.914,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2315.35740000254
+      },
+      {
+        "file": "vits_08.wav",
+        "neural": 0.964716911315918,
+        "ensemble": 0.68,
+        "novelty": 0.867,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1286.0399999990477
+      },
+      {
+        "file": "vits_09.wav",
+        "neural": 0.9946746826171875,
+        "ensemble": 0.68,
+        "novelty": 0.98,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5449.506099997961
+      },
+      {
+        "file": "vits_10.wav",
+        "neural": 0.21722500026226044,
+        "ensemble": 0.27,
+        "novelty": 0.434,
+        "verdict": "GREEN",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1258.2376999998814
+      },
+      {
+        "file": "vits_11.wav",
+        "neural": 0.9951596856117249,
+        "ensemble": 0.68,
+        "novelty": 0.993,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 5654.955800004245
+      },
+      {
+        "file": "vits_12.wav",
+        "neural": 0.9986608028411865,
+        "ensemble": 0.65,
+        "novelty": 0.103,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1286.482600000454
+      },
+      {
+        "file": "vits_13.wav",
+        "neural": 0.8199973106384277,
+        "ensemble": 0.59,
+        "novelty": 0.809,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 2291.994100000011
+      },
+      {
+        "file": "vits_14.wav",
+        "neural": 0.15459032356739044,
+        "ensemble": 0.24,
+        "novelty": 0.786,
+        "verdict": "AMBER",
+        "model_version": "w2v2aasist-cotrain+clone_v3",
+        "latency_ms": 1226.9213999970816
+      }
+    ]
+  }
+}

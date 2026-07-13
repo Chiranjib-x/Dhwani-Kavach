@@ -7,6 +7,8 @@ import os
 # fix is isolating STT in a subprocess — do that only if numerics ever look off.
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
+import asyncio
+
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,6 +48,16 @@ app.include_router(ws_router)
 app.include_router(cases_router)      # defines full paths (/api/cases, /cases)
 app.include_router(campaigns_router)   # /api/campaigns, /campaigns
 app.include_router(governance_router)  # /governance, /api/governance, labelling
+
+
+@app.on_event("startup")
+async def _warm_models():
+    # detector_v3 (ml/detector_v3.py) has no local checkpoint file -- it's
+    # pulled from the HF Hub cache on first use (~1.2 GB). Prefetch it off
+    # the event loop so the FIRST real request isn't the one paying for the
+    # download; server still starts serving immediately either way.
+    from ml import detector_v3
+    asyncio.create_task(asyncio.to_thread(detector_v3.warm))
 
 
 @app.get("/health")
