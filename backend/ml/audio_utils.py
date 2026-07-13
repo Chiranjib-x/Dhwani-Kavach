@@ -15,6 +15,17 @@ def load_audio(path: str, sr: int = SAMPLE_RATE) -> Tuple[np.ndarray, int]:
 
 
 def load_audio_bytes(data: bytes, sr: int = SAMPLE_RATE) -> Tuple[np.ndarray, int]:
+    """Decode arbitrary audio bytes to mono float32 PCM at `sr`.
+
+    Three-tier fallback so any format a caller throws at us decodes -- a
+    WhatsApp/Telegram voice note (OGG/Opus), a Discord/Zoom/Teams export, an
+    M4A/AAC phone recording, audio pulled from a video file:
+      1. soundfile (fast, covers WAV/FLAC/MP3/OGG-Vorbis)
+      2. librosa/audioread (a few more container/codec combinations)
+      3. ffmpeg, via a bundled static binary (imageio-ffmpeg, no system
+         install needed) -- covers virtually everything else, including
+         M4A/AAC and OGG/Opus which (1) and (2) can't.
+    """
     buf = io.BytesIO(data)
     try:
         audio, orig_sr = sf.read(buf, dtype="float32")
@@ -24,11 +35,27 @@ def load_audio_bytes(data: bytes, sr: int = SAMPLE_RATE) -> Tuple[np.ndarray, in
             audio = librosa.resample(audio, orig_sr=orig_sr, target_sr=sr)
         return audio.astype(np.float32), sr
     except Exception:
+        pass
+    try:
         buf.seek(0)
         audio, orig_sr = librosa.load(buf, sr=None, mono=True)
         if orig_sr != sr:
             audio = librosa.resample(audio, orig_sr=orig_sr, target_sr=sr)
         return audio.astype(np.float32), sr
+    except Exception:
+        pass
+    return _decode_via_ffmpeg(data, sr), sr
+
+
+def _decode_via_ffmpeg(data: bytes, sr: int) -> np.ndarray:
+    import subprocess
+    import imageio_ffmpeg
+    proc = subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-i", "pipe:0",
+         "-f", "f32le", "-ac", "1", "-ar", str(sr), "pipe:1"],
+        input=data, capture_output=True, check=True,
+    )
+    return np.frombuffer(proc.stdout, dtype=np.float32).copy()
 
 
 def normalize(audio: np.ndarray) -> np.ndarray:

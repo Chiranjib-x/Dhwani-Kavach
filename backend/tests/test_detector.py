@@ -7,10 +7,19 @@ from ml.audio_utils import SAMPLE_RATE, CHUNK_SAMPLES
 
 
 def _fake_setup(monkeyscores):
-    """Patch the model + per-chunk scorer so detect_audio runs without torch.
-    monkeyscores: callable(chunk) -> layer-score dict."""
-    detector._get_model = lambda: object()
-    detector._score_chunk = lambda model, chunk: monkeyscores(chunk)
+    """Patch the scorer + neural batch + VAD so detect_audio runs without torch.
+    monkeyscores: callable(chunk) -> layer-score dict. Also pins calibration to
+    identity/40-70 so these tests stay isolated from whatever calibration.json
+    happens to be bundled (it's fit against real audio, not these synthetic
+    fixtures, and gets refit independently of this suite)."""
+    import ml.ensemble as ensemble
+    ensemble._FUSION = None                                       # pin hand weights (test asserts their arithmetic)
+    detector.vad.available = lambda: False                       # no VAD gating in unit tests
+    detector.detector_v2.available = lambda: True                # take the batched neural path
+    detector.detector_v2.infer_batch = lambda chunks: [0.0] * len(chunks)  # no real torch
+    detector._score_chunk = lambda chunk, neural_score: monkeyscores(chunk)
+    detector.calibrate = lambda p: p
+    detector._score_thresholds = lambda: (40, 70)
 
 
 def test_worst_chunk_drives_verdict():

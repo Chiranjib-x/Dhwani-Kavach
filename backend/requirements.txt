@@ -4,7 +4,6 @@ torch==2.3.0
 torchaudio==2.3.0
 librosa==0.10.2
 soundfile==0.12.1
-pyaudio==0.2.14
 redis==5.0.4
 numpy==1.26.4
 scipy==1.13.0
@@ -12,9 +11,17 @@ scikit-learn==1.4.2
 websockets==12.0
 huggingface_hub==0.24.6
 transformers==4.44.2
+# onnxruntime powers the Silero VAD gate (models/silero_vad_16k.onnx, vendored).
+# The silero-vad pip package is deliberately NOT used -- its import pulls
+# torchaudio, a fragile native dep. See ml/vad.py.
+onnxruntime==1.27.0
 pydantic==2.7.1
 python-multipart==0.0.9
 aiofiles==23.2.1
+imageio-ffmpeg==0.5.1
+# Universal audio-format decoding (MP3/M4A/AAC/OGG-Opus/WebM/video-container
+# audio) via a bundled static ffmpeg binary -- no system ffmpeg install
+# needed. Last-resort fallback in ml/audio_utils.py after soundfile/librosa.
 # Optional: enables the scam-script layer's speech-to-text. Without it the scam
 # layer stays neutral and the deepfake pipeline is unaffected.
 # faster-whisper==1.0.3

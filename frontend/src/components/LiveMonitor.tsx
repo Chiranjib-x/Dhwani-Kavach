@@ -13,7 +13,7 @@ type Action = "MONITOR" | "CHALLENGE" | "BLOCK"
 type Result = {
   risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number>
   novelty?: number; scam?: Scam; action?: Action; action_reason?: string
-  mode?: "shadow" | "enforce"; enforced?: boolean
+  mode?: "shadow" | "enforce"; enforced?: boolean; call_max?: number
 }
 type WsMsg = Result | { error: string }
 type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer: string }
@@ -21,6 +21,7 @@ type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer:
 const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.07)" }
 const LAYERS: [string, string][] = [["aasist", "AASIST"], ["mfcc", "Spectral Biometrics"], ["breath", "Breath Pattern"], ["phase", "Phase Coherence"], ["liveness", "Active Liveness"]]
 const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ? C.warn : l === "GREEN" ? C.ok : C.muted)
+const bandColor = (score: number) => (score >= 70 ? C.threat : score >= 40 ? C.warn : C.ok)
 const actionColor = (a?: Action) => (a === "BLOCK" ? C.threat : a === "CHALLENGE" ? C.warn : C.ok)
 const TACTIC_LABEL: Record<string, string> = {
   urgency: "Urgency", authority_impersonation: "Authority impersonation", isolation: "Isolation",
@@ -139,6 +140,11 @@ export default function LiveMonitor() {
             <div className="mt-2 font-mono text-[11px] tracking-[0.2em]" style={{ color }}>
               {result ? `${risk} / 100 · ${result.alert_level}` : mode !== "idle" ? "ANALYZING…" : "WAITING FOR AUDIO"}
             </div>
+            {result && (
+              <div className="mt-1.5 font-mono text-[11px] tracking-[0.2em]" style={{ color: bandColor(result.call_max ?? risk) }}>
+                PEAK {String(result.call_max ?? risk).padStart(2, "0")}
+              </div>
+            )}
           </div>
         </div>
 

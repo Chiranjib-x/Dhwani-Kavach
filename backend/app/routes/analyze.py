@@ -19,6 +19,7 @@ class AnalysisResult(BaseModel):
     alert_level: str
     layer_breakdown: dict
     novelty: float = 0.0
+    model_version: str = ""
     scam: dict = {}
     action: str = "MONITOR"
     action_reason: str = ""

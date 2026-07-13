@@ -8,17 +8,33 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
-import torchaudio
 
 from ml.audio_utils import SAMPLE_RATE, CHUNK_SAMPLES, pad_or_trim
 
 _N_MELS = 80
 _MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "deepfake_cnn.pt")
 _model = None
-_mel = torchaudio.transforms.MelSpectrogram(
-    sample_rate=SAMPLE_RATE, n_fft=512, hop_length=160, n_mels=_N_MELS
-)
-_to_db = torchaudio.transforms.AmplitudeToDB()
+_mel = None
+_to_db = None
+
+
+def _get_transforms():
+    """Build the torchaudio mel transforms lazily.
+
+    torchaudio is imported HERE, not at module top, on purpose: this CNN is only a
+    rarely-hit fallback (used when detector_v2/wav2vec2 aren't available), and
+    torchaudio's native extension is fragile on Windows -- a torch/torchaudio version
+    skew raises `OSError: [WinError 127]` on import. At module top that error would
+    crash the ENTIRE backend (detector.py imports this module unconditionally). Lazy
+    import confines any breakage to this fallback path so the server still starts.
+    """
+    global _mel, _to_db
+    if _mel is None:
+        import torchaudio
+        _mel = torchaudio.transforms.MelSpectrogram(
+            sample_rate=SAMPLE_RATE, n_fft=512, hop_length=160, n_mels=_N_MELS)
+        _to_db = torchaudio.transforms.AmplitudeToDB()
+    return _mel, _to_db
 
 
 class _CNN(nn.Module):
@@ -36,7 +52,17 @@ class _CNN(nn.Module):
 
 
 def available() -> bool:
-    return os.path.exists(_MODEL_PATH)
+    # Both the weights AND a working torchaudio are required. Checking torchaudio
+    # here (once, cached by _mel) means a broken torchaudio makes this fallback
+    # report unavailable so the detector chain skips cleanly to the next tier,
+    # instead of reporting available and then crashing inside infer().
+    if not os.path.exists(_MODEL_PATH):
+        return False
+    try:
+        _get_transforms()
+        return True
+    except Exception:
+        return False
 
 
 def _get_model() -> _CNN:
@@ -51,8 +77,9 @@ def _get_model() -> _CNN:
 
 def infer(audio: np.ndarray) -> float:
     """Return spoof probability in [0, 1]; higher = more likely fake."""
+    mel, to_db = _get_transforms()
     wav = torch.from_numpy(pad_or_trim(audio, CHUNK_SAMPLES).astype(np.float32))  # zero-pad/trim, like training
-    spec = _to_db(_mel(wav))
+    spec = to_db(mel(wav))
     spec = (spec - spec.mean()) / (spec.std() + 1e-6)
     x = spec.unsqueeze(0).unsqueeze(0)  # (1, 1, n_mels, T)
     with torch.no_grad():

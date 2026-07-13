@@ -9,6 +9,8 @@ ponytail: rules, not ML — swap for a learned policy only if a bank PoC shows r
 """
 from __future__ import annotations
 
+from ml.scoring import thresholds as _score_thresholds
+
 # A new payee or a large transfer turns a "suspicious voice" into "stop the money".
 _HIGH_VALUE = 50_000  # ₹; tune to the bank's risk appetite
 
@@ -32,7 +34,10 @@ def fuse(
     txn = txn or {}
     high_value = bool(txn.get("new_beneficiary")) or float(txn.get("amount", 0) or 0) >= _HIGH_VALUE
 
-    voice_red = deepfake_risk >= 70
+    # deepfake_risk's RED threshold must match ml.detector's alert_level banding --
+    # otherwise a RED badge with a MONITOR action (or vice versa) reads as broken.
+    _, voice_red_threshold = _score_thresholds()
+    voice_red = deepfake_risk >= voice_red_threshold
     scam_red = scam_score >= 70
     novel = novelty >= 0.6
 
@@ -41,10 +46,8 @@ def fuse(
         reasons.append(f"synthetic-voice risk {deepfake_risk}")
     if scam_red:
         reasons.append(f"scam-script risk {scam_score}")
-    if novel:
-        reasons.append("unknown synthesis signature")
 
-    threat = voice_red or scam_red or novel
+    threat = voice_red or scam_red
 
     if threat and high_value:
         action = "BLOCK"
@@ -57,4 +60,7 @@ def fuse(
         action = "MONITOR"
         reason = "no fraud signal above threshold"
 
-    return {"action": action, "action_reason": reason}
+    if novel:
+        reason += " (elevated novelty noted)"
+
+    return {"action": action, "action_reason": reason, "novelty": novelty}
