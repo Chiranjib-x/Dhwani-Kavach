@@ -267,6 +267,8 @@ def main():
     ap.add_argument("--train-on-user", action="store_true", help="fold user_* into TRAIN (default: val-only)")
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
+    if args.smoke and args.out == _OUT:  # never let a throwaway smoke run clobber the deployed bundle
+        args.out = _OUT + ".smoke"
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     workers = 0 if args.smoke else args.workers
@@ -280,9 +282,19 @@ def main():
         {"params": model.head.parameters(), "lr": args.lr_head},
         {"params": model.backbone.parameters(), "lr": args.lr_backbone},
     ], weight_decay=args.weight_decay)
-    lossf = nn.CrossEntropyLoss()
+    # label smoothing: the fine-tune was over-confident (spoof probs collapsed near
+    # 0), which made calibration fragile and flipped some real voices to "fake".
+    # 0.1 smoothing keeps scores off the rails -> a stabler, more separable output.
+    lossf = nn.CrossEntropyLoss(label_smoothing=0.1)
+    # class-balanced sampling: a real-heavy corpus (e.g. 7000/5500) biases the model
+    # and compresses spoof scores. Weight each clip by inverse class frequency so
+    # batches are ~50/50 real/fake -- fewer false positives, better-centred boundary.
+    labels = np.array([y for _, y in data["train"]])
+    counts = np.bincount(labels, minlength=2)
+    weights = (1.0 / np.maximum(counts, 1))[labels]
+    sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=len(labels), replacement=True)
     train_dl = DataLoader(ClipDS(data["train"], train=True, rirs=data["rir"]),
-                          batch_size=args.batch, shuffle=True, num_workers=workers, drop_last=True)
+                          batch_size=args.batch, sampler=sampler, num_workers=workers, drop_last=True)
 
     base = evaluate(model, data, device, workers)
     print(f"\nBASELINE  {_fmt(base)}\n", flush=True)
