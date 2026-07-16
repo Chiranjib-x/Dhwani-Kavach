@@ -262,6 +262,7 @@ def main():
     ap.add_argument("--lr-backbone", type=float, default=1e-5)  # low: don't wreck pretrained features
     ap.add_argument("--weight-decay", type=float, default=1e-4)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--out", default=_OUT, help="where to save the best head (use a persistent dir on Kaggle)")
     ap.add_argument("--limit", type=int, default=None, help="cap clips per class (debug)")
     ap.add_argument("--train-on-user", action="store_true", help="fold user_* into TRAIN (default: val-only)")
     ap.add_argument("--smoke", action="store_true")
@@ -287,7 +288,8 @@ def main():
     print(f"\nBASELINE  {_fmt(base)}\n", flush=True)
     min_base = min(v for k, v in base.items() if not k.startswith("USER"))
 
-    best, best_state = -1.0, None
+    from safetensors.torch import save_file
+    best = -1.0
     for ep in range(args.epochs):
         model.train(); tot, nb = 0.0, 0
         for xb, yb in train_dl:
@@ -300,25 +302,19 @@ def main():
         worst = min(v for k, v in res.items() if not k.startswith("USER"))
         flag = ""
         # anti-overfit gate: keep only if the WEAKEST channel beats baseline's weakest
-        # AND clean doesn't regress.
+        # AND clean doesn't regress. SAVE TO DISK immediately so a killed session
+        # (Kaggle time limit) still leaves the best head on disk.
         if worst > best and worst >= min_base - 0.02 and res["clean"] >= base["clean"] - 0.02:
-            best, best_state = worst, {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-            flag = "  <- best"
+            best = worst
+            save_file({k: v.detach().cpu().contiguous() for k, v in model.head.state_dict().items()}, args.out)
+            flag = "  <- best (SAVED)"
         print(f"epoch {ep+1}/{args.epochs} loss={tot/max(nb,1):.3f} | {_fmt(res)} | worst={worst:.3f}{flag}", flush=True)
 
-    if best_state is None:
-        print("\nno epoch beat baseline's weakest channel without regressing clean -- NOT saving.", flush=True)
+    if best < 0:
+        print("\nno epoch beat baseline's weakest channel without regressing clean -- nothing saved.", flush=True)
         return
-    model.load_state_dict(best_state)
-    fin = evaluate(model, data, device, workers)
-    print(f"\nFINAL  {_fmt(fin)}", flush=True)
-    print(f"weakest channel {min_base:.3f} -> {min(v for k,v in fin.items() if not k.startswith('USER')):.3f}", flush=True)
-
-    from safetensors.torch import save_file
-    save_file({k: v.contiguous() for k, v in model.head.state_dict().items()}, _OUT)
-    save_file({k: v.contiguous() for k, v in model.state_dict().items()}, _OUT.replace(".safetensors", "_full.safetensors"))
-    print(f"\nSAVED head -> {_OUT}\n      full -> {_OUT.replace('.safetensors', '_full.safetensors')}", flush=True)
-    print("Deploy: A/B via DHWANI_HEAD=... python -m eval.run on your real clips, then copy the head "
+    print(f"\nBEST head saved -> {args.out}  (weakest channel {min_base:.3f} -> {best:.3f})", flush=True)
+    print("Deploy: A/B via DHWANI_HEAD=<path> python -m eval.run on your real clips, then copy the head "
           "over models/w2v2aasist_cotrain.safetensors ONLY if it wins.", flush=True)
     print(f"done in {time.time()-t0:.0f}s", flush=True)
 
