@@ -61,7 +61,7 @@ from ml.vendor.codecfake_model import W2VAASIST
 from ml.telephony import to_telephony
 from tools.augment import add_reverb, add_noise
 
-_OUT = os.path.join(os.path.dirname(__file__), "..", "models", "w2v2aasist_robust.safetensors")
+_OUT = os.path.join(os.path.dirname(__file__), "..", "models", "w2v2aasist_full.safetensors")
 _CUT = 64600
 _AUDIO_EXT = ("*.wav", "*.flac", "*.mp3", "*.ogg", "*.m4a")
 _VAL_CAP = 250    # clips/class used by the per-epoch gate (keeps eval cheap)
@@ -306,16 +306,19 @@ def main():
         # (Kaggle time limit) still leaves the best head on disk.
         if worst > best and worst >= min_base - 0.02 and res["clean"] >= base["clean"] - 0.02:
             best = worst
-            save_file({k: v.detach().cpu().contiguous() for k, v in model.head.state_dict().items()}, args.out)
+            # save the FULL model (backbone.* + head.*): the backbone is fine-tuned
+            # too, so a head-only checkpoint drops most of the gains. detector_v2
+            # loads this bundle via DHWANI_MODEL / models/w2v2aasist_full.safetensors.
+            save_file({k: v.detach().cpu().contiguous() for k, v in model.state_dict().items()}, args.out)
             flag = "  <- best (SAVED)"
         print(f"epoch {ep+1}/{args.epochs} loss={tot/max(nb,1):.3f} | {_fmt(res)} | worst={worst:.3f}{flag}", flush=True)
 
     if best < 0:
         print("\nno epoch beat baseline's weakest channel without regressing clean -- nothing saved.", flush=True)
         return
-    print(f"\nBEST head saved -> {args.out}  (weakest channel {min_base:.3f} -> {best:.3f})", flush=True)
-    print("Deploy: A/B via DHWANI_HEAD=<path> python -m eval.run on your real clips, then copy the head "
-          "over models/w2v2aasist_cotrain.safetensors ONLY if it wins.", flush=True)
+    print(f"\nBEST full model saved -> {args.out}  (weakest channel {min_base:.3f} -> {best:.3f})", flush=True)
+    print("Deploy: A/B via DHWANI_MODEL=<path> python -m eval.run on your real clips, then copy the bundle "
+          "to models/w2v2aasist_full.safetensors ONLY if it wins (backend auto-loads that path).", flush=True)
     print(f"done in {time.time()-t0:.0f}s", flush=True)
 
 

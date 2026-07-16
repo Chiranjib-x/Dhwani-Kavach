@@ -30,6 +30,13 @@ _CKPT_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "w2v2aasist
 # via backend/eval WITHOUT overwriting the deployed cotrain head. Unset -> default.
 _ST_PATH = os.environ.get("DHWANI_HEAD") or os.path.join(
     os.path.dirname(__file__), "..", "models", "w2v2aasist_cotrain.safetensors")
+# A FULL fine-tuned bundle (backbone.* + head.*) from training/train_robust.py.
+# When present it overrides BOTH the stock XLS-R backbone AND the head -- required
+# because train_robust fine-tunes the backbone, so a head-only checkpoint would
+# drop the gains that live in the backbone. Deploy = drop the file at the default
+# path (or set DHWANI_MODEL). Takes precedence over _ST_PATH / _CKPT_PATH.
+_BUNDLE_PATH = os.environ.get("DHWANI_MODEL") or os.path.join(
+    os.path.dirname(__file__), "..", "models", "w2v2aasist_full.safetensors")
 _WAV2VEC2_BASE_ID = "facebook/wav2vec2-xls-r-300m"  # fixed by LL = Linear(1024, 128) in W2VAASIST
 _HIDDEN_LAYER = 5    # generate_score.py: model(input_values).hidden_states[5]
 _CUT = 64600         # generate_score.py: pad_dataset()'s cut length
@@ -38,8 +45,13 @@ _backbone = None
 _head = None
 
 
+def _bundle() -> str | None:
+    """Path to the full fine-tuned bundle if it exists, else None."""
+    return _BUNDLE_PATH if os.path.exists(_BUNDLE_PATH) else None
+
+
 def available() -> bool:
-    return os.path.exists(_ST_PATH) or os.path.exists(_CKPT_PATH)
+    return _bundle() is not None or os.path.exists(_ST_PATH) or os.path.exists(_CKPT_PATH)
 
 
 def _get_backbone():
@@ -56,6 +68,13 @@ def _get_backbone():
         m.encoder.layers = torch.nn.ModuleList(list(m.encoder.layers[:_HIDDEN_LAYER]))
         m.encoder.layer_norm = torch.nn.Identity()
         m.config.output_hidden_states = False
+        b = _bundle()
+        if b:
+            # overwrite stock XLS-R weights with the fine-tuned backbone. Same
+            # truncated architecture RobustDetector trained, so keys align exactly.
+            from safetensors.torch import load_file
+            sd = load_file(b)
+            m.load_state_dict({k[len("backbone."):]: v for k, v in sd.items() if k.startswith("backbone.")})
         m.eval()
         _backbone = m
     return _backbone
@@ -82,7 +101,15 @@ def _alias_vendored_classes_as_model_module() -> None:
 def _get_head() -> W2VAASIST:
     global _head
     if _head is None:
-        if os.path.exists(_ST_PATH):
+        b = _bundle()
+        if b:
+            # head.* tensors from the full fine-tuned bundle (paired with the
+            # fine-tuned backbone loaded in _get_backbone).
+            from safetensors.torch import load_file
+            sd = load_file(b)
+            m = W2VAASIST()
+            m.load_state_dict({k[len("head."):]: v for k, v in sd.items() if k.startswith("head.")})
+        elif os.path.exists(_ST_PATH):
             # Safe path: pure tensors, no pickle, no sys.modules alias. Produced by
             # tools/to_safetensors.py from the pickled checkpoint (verified to
             # round-trip). This is the preferred path -- unpickling an arbitrary
