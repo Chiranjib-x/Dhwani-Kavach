@@ -29,3 +29,5 @@ backend/models/w2v2aasist_cotrain.pt   # legacy pickle; superseded by the .safet
 
 # 306MB fine-tuned bundle -- keep local, download from training run
 backend/models/w2v2aasist_full.safetensors
+# local calibration paired with the local bundle (mis-scales the OLD model if shipped)
+backend/models/calibration.json
