@@ -64,14 +64,18 @@ detector isn't: the decision, the deployment, and the intelligence around it.
 
 ### A · Voice deepfake engine (the core)
 - **What:** decides if the voice is AI-generated.
-- **How:** 5-layer weighted ensemble. **wav2vec2 (self-supervised) neural model
-  leads (weight 0.80)**; four handcrafted heuristics support: spectral/MFCC (0.07),
-  breath (0.03), phase coherence (0.05), liveness (0.05). Score 0–100.
-  **Bands: GREEN <40 · AMBER 40–69 · RED ≥70.** Worst 4-second window drives the
-  verdict; silence is gated out.
-- **Number:** ~**4% EER clean / 6% on phone lines** on modern fakes.
-- **So what:** the actual anti-clone defense OTP/biometrics lack — and tuned on
-  Indian voices so it doesn't false-flag real customers.
+- **How:** **two independent neural detectors carry the verdict (0.90 total):** a
+  **W2VAASIST** graph-attention head on a **wav2vec2-XLS-R** backbone (codec/artifact
+  specialist) + **clone_v3**, an XLS-R model fine-tuned on modern commercial clones
+  (ElevenLabs-class). Four acoustic heuristics (MFCC, breath, phase, liveness) stay in
+  at **0.10 total, as evidence only**. Optional **learned logistic-regression fusion**
+  (`DHWANI_FUSION=1`). Score 0–100, **Platt-calibrated**; bands **GREEN <40 · AMBER
+  40–69 · RED ≥70**. Worst 4-second window wins; **Silero VAD** gates non-speech.
+- **Number (measured, small labeled set — 15 real / 15 clone):** neural **AUC 0.996,
+  EER ~6.7% clean**; **100% of clone clips flagged**. Telephony and out-of-domain
+  studio-English real voices are **known weaknesses** (see §9).
+- **So what:** two independent architectures are robust where one model overfits —
+  our own v1 (a single wav2vec2) scored **near-random on real clone clips**; this fixes that.
 
 ### B · Scam-script layer (human scammers)
 - **What:** flags the *manipulation* even when the voice is a real human.
@@ -103,12 +107,13 @@ detector isn't: the decision, the deployment, and the intelligence around it.
 - **So what:** "the same synthetic voice hit 14 customers" — fraud-ring intelligence
   that **compounds with use** (a data network effect competitors can't replicate).
 
-### F · Telephony robustness
-- **What:** works on real phone lines, not just clean mics.
-- **How:** training audio degraded to **8 kHz, G.711 µ-law, band-limited, lossy** so
-  the model learns telephony.
-- **Number:** clean 4% vs phone **6% EER** — a ~2-point gap where un-augmented models
-  show a cliff. Proven: a clone through an 8 kHz phone filter still reads RED.
+### F · Telephony robustness (in progress — be honest)
+- **What:** working toward robustness on real 8 kHz phone lines.
+- **How:** a **channel-robust training pipeline** (`train_robust.py`) degrades audio to
+  8 kHz / G.711 / lossy on the fly; an A/B eval harness (`eval/run.py`) measures the shift.
+- **Status (measured):** telephony is still a **weakness** — AUC ~**0.62–0.82** on our
+  labeled set (vs 0.996 clean). **Do not claim a low phone EER** — frame it as active
+  work, with the pipeline built to close it.
 
 ### G · Multilingual
 - Whisper auto-detects language; the LLM reasons in Hindi & Hinglish; the acoustic
@@ -137,21 +142,25 @@ detector isn't: the decision, the deployment, and the intelligence around it.
 | Metric | Value |
 |---|---|
 | First verdict latency | ~4 s (live), streaming update ~every 2 s |
-| Deployed model EER | **4% clean / 6% phone-line** (modern fakes) |
-| ASVspoof dev EER | 0.13% |
-| Detection layers | 5 + LLM scam layer |
-| Neural model weight | 0.80 (of the ensemble) |
+| Real-clone set (15 real / 15 fake) | neural **AUC 0.996 · EER ~6.7% clean**; 100% clones flagged |
+| Telephony (same set) | AUC ~**0.62–0.82** — **known weakness, active work** |
+| Neural weight / heuristics | 0.90 (two detectors ×0.45) / 0.10 (evidence only) |
+| Detection layers | **2 neural** + 4 heuristic + LLM scam layer |
 | Scam tactics detected | 6 |
 | Voiceprint dim / match threshold | 768-d / 0.85 cosine |
-| Risk bands | GREEN <40 · AMBER 40–69 · RED ≥70 |
+| Risk bands | GREEN <40 · AMBER 40–69 · RED ≥70 (Platt-calibrated) |
 | Audio stored | 0 (verdict + transcript only) |
 | TRL | 5 → 6 |
 
-**Training journey (great for the technical panel):**
-CNN 2.75% dev *(but 9.75% unseen → overfit)* → wav2vec2 0.40% *(false-flagged real
-voices)* → +real Hindi 0.13% → +modern fakes ~5.2% → **+telephony 4%/6% (deployed)**.
-*Honest caveat: these EERs are on different dev sets — not directly comparable; a single
-fixed benchmark is future work.*
+**The generalization story (tell this — it's your strongest, most credible slide):**
+Our **v1** was a single wav2vec2 that scored ~4% EER on the ASVspoof/Kaggle dev sets.
+Measured on **real** ElevenLabs clones + real voices, it was **near-random (AUC 0.63)** —
+a textbook out-of-domain generalization failure (cf. Müller et al., Interspeech 2022:
+SSL detectors degrade 200–1000% cross-domain). So we moved to **two independent XLS-R
+detectors + fusion**, which gets **AUC 0.996** on those same real clips. The lesson that
+drives the design: **never trust one detector's leaderboard number.**
+*(Fusion configs measured: neural-only EER ~6.7% clean; hand-weighted ensemble 20% raw
+→ 13% calibrated → 3% with learned fusion. Deploy with calibration + fusion on.)*
 
 ---
 
@@ -163,8 +172,9 @@ fixed benchmark is future work.*
   metrics). *Screenshot `architecture.html`.*
 - **Orchestration (runtime):** one async **event loop** orchestrates; CPU inference
   runs **off-thread**; the heavy STT+LLM runs in a **throttled background task**; only
-  the newest window is scored (backpressure); peak-hold decay for stability; every
-  layer **fail-safe** (degrades to neutral). *Screenshot `orchestration.html`.*
+  the newest window is scored (backpressure); a **StreamAggregator (EWMA smoothing +
+  2-window confirmation + hysteresis)** stabilises the verdict; every layer **fail-safe**
+  (degrades to neutral). *Screenshot `orchestration.html`.*
 
 ---
 
@@ -175,9 +185,9 @@ intelligence · on-prem no-audio · zero-day novelty · multilingual.
 
 | Capability | Academic (AASIST/RawNet2) | Commercial cloud | **Dhwani-Kavach** |
 |---|---|---|---|
-| ASVspoof dev EER | ~1% | n/a | **0.13%** |
-| Modern / in-the-wild fakes | degrades (20–40%) | good | **~4–6% EER** |
-| Telephony (8 kHz) | usually untested | varies | **6% EER (trained for it)** |
+| Real-clone separation (our labeled set) | not reported | not reported | **AUC 0.996 / EER ~6.7%** |
+| Modern / in-the-wild fakes | degrades (20–40%) | good | **100% of clone clips flagged** |
+| Telephony (8 kHz) | usually untested | varies | **weak (AUC ~0.62–0.82) — active work** |
 | Human scam (no deepfake) | ✗ | ✗ | **✓ LLM layer** |
 | Deployment | research code | cloud API | **on-prem Docker** |
 | Explainability & governance | ✗ | limited | **✓ built-in** |
@@ -217,16 +227,20 @@ on-prem trust under RBI localisation.
 
 ---
 
-## 9. Honest limitations (the "viva armor" slide — say it with confidence)
+## 9. Honest limitations (the "viva armor" slide — say these with confidence)
 
-1. Thresholds (voiceprint 0.85, fusion cut-offs, ensemble weights) are **hand-set
-   defaults**, not ablated → calibrate on real traffic in a pilot.
-2. Novelty is a softmax-uncertainty **heuristic** → embedding-distance OOD is the upgrade.
-3. Campaign store is a **linear scan** → FAISS/pgvector at scale.
-4. EERs on **differing dev sets** → one fixed benchmark with CIs next.
-5. LLM is a **cloud call** → same Nemotron as an on-prem NIM container (base-URL change).
-6. **Customer voice-identity** (is it *this* customer?) not built yet — anti-spoofing only.
-7. **Adversarial-evasion** robustness untested.
+1. **Small eval set (30 clips)** → numbers are directional; a large fixed benchmark is
+   in progress (harness built: `eval/run.py`). No large-corpus ROC yet.
+2. **Telephony is a measured weakness** (AUC ~0.62–0.82 vs 0.996 clean) → channel-robust
+   retraining (`train_robust.py`) is the active fix.
+3. **Out-of-domain real voices false-positive** (studio English — one real clip even
+   scores above its own clone) → needs more diverse real training data (highest-value lever).
+4. **The default hand-weighted ensemble under-performs its own neural core** → deploy with
+   **calibration + learned fusion on** (measured: EER 20% raw → 13% calibrated → 3% fusion).
+5. Thresholds (voiceprint 0.85, calibration, fusion) tuned on thin data → refit at scale.
+6. LLM is a **cloud call** → same Nemotron as an on-prem NIM container (base-URL change).
+7. **Customer voice-identity** (is it *this* customer?) not built yet — anti-spoofing only;
+   **adversarial-evasion** untested.
 
 *Why the heuristics (e.g. phase) are low-weight:* they're cheap, interpretable,
 training-free signals that catch specific synthesis artifacts (phase = vocoders have
