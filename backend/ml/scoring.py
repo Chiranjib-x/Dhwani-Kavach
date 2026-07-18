@@ -47,7 +47,12 @@ def _load_cal() -> dict:
     # Clamp the slope and force a minimum RED/AMBER margin so a bad
     # calibration.json degrades gracefully instead of breaking every verdict.
     cal["a"] = min(max(float(cal["a"]), 0.5), 1.5)
-    cal["b"] = min(max(float(cal["b"]), -2.0), 2.0)
+    # b is the log-odds SHIFT. A fine-tuned model can compress its raw scores
+    # toward 0 (whole distribution near-zero), needing a large positive shift to
+    # re-center the real/fake boundary -- fit b~5.8 for w2v2aasist_full. The slope
+    # clamp above (a) still guards against the runaway that once flagged live mic
+    # audio universally; a shift only moves the boundary, it can't over-sharpen.
+    cal["b"] = min(max(float(cal["b"]), -8.0), 8.0)
     cal["t_low"] = min(max(float(cal["t_low"]), 0.05), 0.95)
     cal["t_high"] = min(max(float(cal["t_high"]), cal["t_low"] + 0.15), 0.95)
     return cal

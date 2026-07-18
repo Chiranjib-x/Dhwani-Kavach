@@ -9,6 +9,98 @@ This file is the single source of truth for **where the project stands** and
 
 ---
 
+## 0. START HERE — current state (updated 2026-07)
+
+> Sections 1–10 below are **historical** (they describe the original AASIST.pth +
+> Next.js build). The project has since migrated to an **XLS-R + W2VAASIST** neural
+> detector and a **Vite/TanStack** frontend. Where §1–10 disagree with this section,
+> **this section wins.** The app-flow, API contracts, and "how to run the backend"
+> parts of §1–10 are still broadly correct.
+
+### The detector today
+- **Model:** `facebook/wav2vec2-xls-r-300m` backbone truncated to its first 5 encoder
+  layers + a **W2VAASIST** graph-attention head. Code: `backend/ml/detector_v2.py`.
+- **Deployed weights:** a single fine-tuned bundle `backend/models/w2v2aasist_full.safetensors`
+  (~306 MB, backbone + head). The backend auto-loads it (or `DHWANI_MODEL=<path>`).
+- **Fallback:** if the bundle is absent, it falls back to the head-only
+  `backend/models/w2v2aasist_cotrain.safetensors` (**in git**) on a stock XLS-R backbone —
+  runs, but less robust. **Do not pair the new `calibration.json` with this fallback** (it
+  would mis-scale it and over-flag).
+
+### ⚠️ A fresh clone has NO working model — read this first
+Two files are **gitignored** (too big / paired with the bundle), so your clone won't have them:
+| file | what | how to get it |
+|---|---|---|
+| `backend/models/w2v2aasist_full.safetensors` (306 MB) | the fine-tuned detector | **re-run the Kaggle training** (below), or get the file from Vishal |
+| `backend/models/calibration.json` | maps the bundle's scores → alarm scale | comes with the bundle; get it from Vishal, or refit (below) |
+
+Until you drop those two in `backend/models/`, the app runs on the weaker fallback head.
+**The bundle + calibration must travel together** — the calibration is fit to that exact model.
+
+### How to run (verified this session)
+```bash
+# Backend → http://localhost:8000
+python -m uvicorn app.main:app --app-dir backend --port 8000
+# Frontend → http://localhost:5173 (Vite)
+cd frontend && npm install && npm run dev
+```
+> The backend loads the model into memory **at startup**. If you swap the model or
+> calibration files, **restart the backend** — it will not hot-reload them.
+
+### Does it work? (measured on Vishal's real clips, `sample_audio/`)
+- ✅ **Flags fakes:** all 10 clone clips → 🔴 RED.
+- ✅ **Own-voice reals:** GREEN/AMBER (no false RED).
+- ❌ **Known weakness:** 2 out-of-domain English *studio* real voices (`lily_original`,
+  `chris_original`) false-positive as fake — `lily` even scores above her own clone.
+  Calibration can't fix inverted scores; this needs **more diverse real training data**.
+- Calibration is **provisional** — fit on ~30 clips. Refit it on a bigger labeled
+  real+fake set for production (see "Retrain / improve" below).
+
+### Kaggle training pipeline (how the bundle is made)
+- Script: `backend/training/train_robust.py` — full fine-tune (backbone lr 1e-5 + head lr 1e-4),
+  on-the-fly telephony-weighted channel augmentation, per-condition + per-source held-out gate,
+  saves the best **full bundle** to `--out`. Now includes **label smoothing + class-balanced
+  sampling** (reduces the over-confidence that made calibration fragile).
+- Run it on Kaggle GPU via one self-contained cell (clone repo → pip install → symlink datasets
+  → `python -m training.train_robust --data <dir> --out /kaggle/working/w2v2aasist_full.safetensors --epochs 6`).
+  Datasets used: ASVspoof2019 LA, Common Voice Hindi, In-The-Wild, Fake-or-Real, + Vishal's own
+  voices folded in. Download the 306 MB bundle from Kaggle Output when done.
+- **Deploy:** A/B locally first — `DHWANI_MODEL=<new.safetensors> python -m eval.run eval/corpus --telephony`
+  — then copy over `backend/models/w2v2aasist_full.safetensors` only if it wins, and refit calibration.
+
+### Retrain / improve (next tickets, evidence-based)
+1. **Kill the studio-voice false positives** → add more **diverse real English/varied-mic**
+   speakers to the Kaggle `real/` folder (and/or the MLAAD multilingual set). This is the
+   highest-value lever per the generalization literature.
+2. **Stronger head** (bigger lift) → swap W2VAASIST for an **SLS or Mamba** classifier on the
+   same XLS-R backbone; these top the In-The-Wild generalization leaderboard.
+3. **Refit calibration** on a real labeled set (`backend/ml/scoring.py` Platt `a,b` + `t_low/t_high`;
+   clamp for `b` was widened to ±8 for the compressed fine-tuned scores).
+   - Research: Speech DF Arena (arXiv 2509.02859), Understanding Generalization (arXiv 2406.03512).
+
+### Key files (current detector)
+```
+backend/ml/detector_v2.py        active detector (XLS-R + W2VAASIST bundle loader)
+backend/ml/scoring.py            Platt calibration + StreamAggregator (EWMA/hysteresis)
+backend/ml/ensemble.py           neural-dominant fusion (0.90 neural / 0.10 heuristics)
+backend/training/train_robust.py Kaggle fine-tune pipeline (the bundle factory)
+backend/tools/augment.py         telephony/reverb/noise channel augmentation
+backend/eval/run.py              A/B eval harness (per-channel EER/AUC on a labeled corpus)
+backend/models/                  w2v2aasist_cotrain.safetensors (in git, fallback head);
+                                 w2v2aasist_full.safetensors + calibration.json (GITIGNORED)
+frontend/src/components/LiveMonitor.tsx  live mic/file streaming UI
+frontend/src/routes/index.tsx            landing page (note: still markets a "5-layer" story)
+```
+
+### Honest caveats for whoever takes over
+- The landing page (`routes/index.tsx`) still shows **hardcoded demo numbers** (96/91/88/94/97,
+  "99.2% accuracy") and a "5 layers, all must agree" story. Reality: it's **one neural model**
+  at 90% weight; the 4 heuristic layers are near-noise. Update the marketing to match if you ship.
+- `sample_audio/` (Vishal's real + cloned voices) is **gitignored / private** — the labeled set
+  used for the numbers above. Ask Vishal for it to reproduce the eval.
+
+---
+
 ## 1. Current status against the build plan
 
 Plan: https://vishalvivek2007.github.io/Dhvani-kavach-plan/ (phases 0→4, 38 steps).
