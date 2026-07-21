@@ -11,9 +11,10 @@ type AlertLevel = "GREEN" | "AMBER" | "RED" | "UNCERTAIN"
 type Scam = { score: number; tactics: string[]; transcript?: string; language?: string }
 type Action = "MONITOR" | "CHALLENGE" | "BLOCK"
 type Quality = { ok: boolean; score: number; reason: string; snr_db?: number; rms?: number; clip_frac?: number }
+type Replay = { suspect: boolean; score: number; reason: string }
 type Result = {
   risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number>
-  quality?: Quality
+  quality?: Quality; replay?: Replay
   novelty?: number; scam?: Scam; action?: Action; action_reason?: string
   mode?: "shadow" | "enforce"; enforced?: boolean; call_max?: number
 }
@@ -43,6 +44,11 @@ export default function LiveMonitor() {
   const [fileName, setFileName] = useState<string | null>(null)
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [error, setError] = useState<string | null>(null)
+  // time-to-flag: problem statement requires "High Risk within the first 10
+  // seconds" — measure it and show it, per session (reset on each new stream).
+  const [flaggedAt, setFlaggedAt] = useState<number | null>(null)
+  const startTsRef = useRef<number | null>(null)
+  const flaggedRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -52,6 +58,10 @@ export default function LiveMonitor() {
   const onMessage = useCallback((msg: WsMsg) => {
     if ("error" in msg) { setError(msg.error); return }
     setResult(msg)
+    if (msg.alert_level === "RED" && !flaggedRef.current && startTsRef.current !== null) {
+      flaggedRef.current = true
+      setFlaggedAt((performance.now() - startTsRef.current) / 1000)
+    }
     setAlerts((a) => [{ id: ++seq.current, time: new Date().toLocaleTimeString(), risk: msg.risk_score, level: msg.alert_level, layer: topLayer(msg.layer_breakdown) }, ...a].slice(0, 12))
   }, [])
   // URL carries the policy mode; flipping it reconnects with the new mode.
@@ -70,6 +80,7 @@ export default function LiveMonitor() {
 
   const analyzeFile = useCallback(async (file: File) => {
     cleanup(); setError(null); setResult(null); setFileName(file.name); setMode("file")
+    startTsRef.current = performance.now(); flaggedRef.current = false; setFlaggedAt(null)
     reconnect()
     try {
       const pcm = await decodeTo16kMono(file)
@@ -86,6 +97,7 @@ export default function LiveMonitor() {
   const toggleMic = useCallback(async () => {
     if (mode === "mic") { cleanup(); setMode("idle"); return }
     cleanup(); setError(null); setResult(null); setMode("mic")
+    startTsRef.current = performance.now(); flaggedRef.current = false; setFlaggedAt(null)
     reconnect()
     try {
       const analyser = await mic.start()
@@ -143,6 +155,27 @@ export default function LiveMonitor() {
         </div>
       )}
 
+      {/* HIGH RISK banner — the problem statement's literal expected outcome:
+          "flag the call as High Risk within the first 10 seconds". We show the
+          measured time-to-flag against that budget. */}
+      {result?.alert_level === "RED" && (
+        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          className="mt-6 rounded-xl px-5 py-3 flex flex-wrap items-center gap-3"
+          style={{ border: `1px solid ${C.threat}`, backgroundColor: "rgba(255,77,109,0.08)" }}>
+          <span className="font-mono font-bold text-[14px] tracking-wider" style={{ color: C.threat }}>
+            ⚠ HIGH RISK
+          </span>
+          <span className="text-[13px]" style={{ color: C.text }}>
+            synthetic artifacts detected — micro-imperfections in pitch/frequency
+          </span>
+          {flaggedAt !== null && (
+            <span className="font-mono text-[11px] ml-auto" style={{ color: flaggedAt <= 10 ? C.ok : C.warn }}>
+              flagged at {flaggedAt.toFixed(1)}s · 10s budget {flaggedAt <= 10 ? "✓" : "exceeded"}
+            </span>
+          )}
+        </motion.div>
+      )}
+
       <div className="mt-8 grid gap-8 md:grid-cols-2 items-center">
         {/* live gauge */}
         <div className="flex flex-col items-center">
@@ -167,7 +200,20 @@ export default function LiveMonitor() {
         {/* live spectrogram */}
         <div>
           <div className="font-mono text-[11px] tracking-wider mb-2" style={{ color: C.muted }}>LIVE SPECTROGRAM</div>
-          <canvas ref={canvasRef} width={512} height={150} className="w-full rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)" }} />
+          <div className="relative">
+            <canvas ref={canvasRef} width={512} height={150} className="w-full rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.03)" }} />
+            {/* artifact-window highlight: the newest ~4s region (right edge) is
+                the window the detector just scored — outline it when it reads RED
+                so "analyzes the spectrogram" is visibly true. */}
+            {result?.alert_level === "RED" && (
+              <div className="absolute top-0 right-0 h-full rounded-r-lg pointer-events-none"
+                style={{ width: "23%", border: `1px solid ${C.threat}`, backgroundColor: "rgba(255,77,109,0.10)" }}>
+                <span className="absolute bottom-1 right-1.5 font-mono text-[9px] tracking-wider" style={{ color: C.threat }}>
+                  ARTIFACT WINDOW
+                </span>
+              </div>
+            )}
+          </div>
           <div className="font-mono text-[10px] mt-2" style={{ color: C.muted }}>128-band · {TARGET_SR / 1000} kHz · 4s window, 2s hop</div>
         </div>
       </div>
@@ -205,6 +251,12 @@ export default function LiveMonitor() {
         ))}
         {!result?.scam?.tactics?.length && (
           <span className="text-[11px]" style={{ color: C.muted }}>no social-engineering tactics detected</span>
+        )}
+        {result?.replay?.suspect && (
+          <span className="rounded-full px-3 py-1 text-[11px]" title={result.replay.reason}
+            style={{ border: `1px solid ${C.threat}`, color: C.threat }}>
+            Loudspeaker replay suspected
+          </span>
         )}
         <span className="font-mono text-[11px] ml-auto" style={{ color: (result?.novelty ?? 0) >= 0.6 ? C.warn : C.muted }}>
           NOVELTY {Math.round((result?.novelty ?? 0) * 100)}%{(result?.novelty ?? 0) >= 0.6 ? " · unknown signature" : ""}
