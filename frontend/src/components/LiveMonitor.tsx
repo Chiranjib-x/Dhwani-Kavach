@@ -22,7 +22,9 @@ type WsMsg = Result | { error: string }
 type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer: string }
 
 const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", info: "#38BDF8", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.07)" }
-const LAYERS: [string, string][] = [["aasist", "AASIST"], ["mfcc", "Spectral Biometrics"], ["breath", "Breath Pattern"], ["phase", "Phase Coherence"], ["liveness", "Active Liveness"]]
+// "aasist" is the historical KEY the backend still emits for the primary neural
+// slot — today that slot is the XLS-R + W2VAASIST detector, so label it honestly.
+const LAYERS: [string, string][] = [["aasist", "Neural · XLS-R deepfake"], ["clone_v3", "Neural · Clone specialist"], ["mfcc", "Spectral Biometrics"], ["breath", "Breath Pattern"], ["phase", "Phase Coherence"], ["liveness", "Active Liveness"]]
 const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ? C.warn : l === "GREEN" ? C.ok : l === "UNCERTAIN" ? C.info : C.muted)
 const bandColor = (score: number) => (score >= 70 ? C.threat : score >= 40 ? C.warn : C.ok)
 const actionColor = (a?: Action) => (a === "BLOCK" ? C.threat : a === "CHALLENGE" ? C.warn : C.ok)
@@ -300,9 +302,20 @@ export default function LiveMonitor() {
 
       {error && <div className="mt-4 font-mono text-[11px]" style={{ color: C.threat }}>{error}</div>}
 
-      {/* backend product pages: audit / evidence · campaigns · governance · metrics */}
+      {/* live demos (frontend routes) + backend product pages */}
       <div className="mt-8 pt-6 flex flex-wrap items-center gap-4" style={{ borderTop: `1px solid ${C.faint}` }}>
-        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: C.muted }}>BANK PRODUCT PAGES</span>
+        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: C.muted }}>LIVE DEMOS</span>
+        {[
+          ["Live Call (WebRTC)", "/call"],
+          ["Voice OTP", "/verify"],
+        ].map(([label, path]) => (
+          <a key={path} href={path}
+            className="font-mono text-[11px] underline-offset-4 hover:underline"
+            style={{ color: C.cyan }}>
+            {label} ↗
+          </a>
+        ))}
+        <span className="font-mono text-[10px] tracking-[0.2em] ml-4" style={{ color: C.muted }}>BANK PRODUCT PAGES</span>
         {[
           ["Cases · Evidence", "/cases"],
           ["Campaigns", "/campaigns"],

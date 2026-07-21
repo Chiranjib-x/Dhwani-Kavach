@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
 });
 
 const LAYERS = [
-  { n: "01", name: "AASIST", desc: "Deep acoustic fingerprint trained on synthetic speech artifacts" },
+  { n: "01", name: "Dual Neural Core", desc: "Two independent XLS-R detectors trained on different clone families cross-check every window" },
   { n: "02", name: "Spectral Biometrics", desc: "MFCC, jitter, shimmer the vocal tract can't fake" },
   { n: "03", name: "Breath Pattern", desc: "Real speech breathes irregularly. Synthesis doesn't." },
   { n: "04", name: "Phase Coherence", desc: "Every synthesis model leaves phase seams in the math" },
