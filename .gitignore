@@ -31,3 +31,7 @@ backend/models/w2v2aasist_cotrain.pt   # legacy pickle; superseded by the .safet
 backend/models/w2v2aasist_full.safetensors
 # local calibration paired with the local bundle (mis-scales the OLD model if shipped)
 backend/models/calibration.json
+# 1.35GB ported public checkpoint (detector_v4) -- keep local, rebuild via tools/port_sls.py
+backend/models/xlsr_sls.safetensors
+# generated eval output, same category as results*.json above
+backend/eval/ab_channels.json

@@ -20,6 +20,8 @@ def fuse(
     scam_score: int = 0,
     novelty: float = 0.0,
     txn: dict | None = None,
+    quality_ok: bool = True,
+    quality_reason: str = "",
 ) -> dict:
     """
     Parameters
@@ -28,10 +30,20 @@ def fuse(
     scam_score    : 0-100 from the scam-script layer (0 if unavailable).
     novelty       : 0-1, "unknown synthesis signature" likelihood.
     txn           : optional {amount: float, new_beneficiary: bool}.
+    quality_ok    : False when input quality was too low to trust the voice score.
+    quality_reason: human-readable quality failure (shown to the agent).
 
     Returns {action, action_reason}.
     """
     txn = txn or {}
+    # When the input is too degraded to judge the voice, we CANNOT clear the call
+    # (a laundered deepfake reads unreliable, not clean) and we must NOT block on a
+    # score we don't trust. The honest action is to step up authentication.
+    if not quality_ok:
+        reason = quality_reason or "input quality too low to assess the voice"
+        return {"action": "CHALLENGE",
+                "action_reason": f"{reason} — verify the caller another way",
+                "novelty": novelty}
     high_value = bool(txn.get("new_beneficiary")) or float(txn.get("amount", 0) or 0) >= _HIGH_VALUE
 
     # deepfake_risk's RED threshold must match ml.detector's alert_level banding --

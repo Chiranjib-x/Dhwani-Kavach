@@ -20,22 +20,25 @@ import numpy as np
 # improves cross-domain robustness (~38% relative EER reduction reported for
 # spectral+SSL fusion on cross-dataset benchmarks vs. an SSL-only detector).
 #
-# Neural-dominant weighting. Real labeled audio (sample_audio/ original-vs-clone
-# pairs + eval/) showed the original 50/50 split let the acoustic heuristics DILUTE
-# a strong neural signal: confident clones (aasist~0.8, clone_v3~0.98) landed at
-# AMBER because breath returns ~0.75 on everything and phase/mfcc/liveness sit near
-# 0 for both real and fake -- they don't separate, so they only add noise. The two
-# independent neural detectors now carry the verdict (0.90); the heuristics stay in
-# at a token 0.10 as a tie-breaker and remain fully visible in layer_breakdown as
-# evidence. This is the blueprint's "demote heuristics to evidence" (§6/§7-L6) done
-# as a conservative hand-reweight rather than a learned fusion fit on thin data.
+# NEURAL-ONLY verdict. The acoustic heuristics were measured to be near-noise --
+# breath returns ~0.75 on EVERYTHING, and mfcc/phase/liveness sit near 0 for both
+# real and fake, so they don't separate the classes; any non-zero weight just
+# pulls a confident clone (aasist~0.8, clone_v3~0.98) back toward AMBER. That
+# dilution was the "mostly amber, never a clean RED" symptom. The learned-fusion
+# experiment independently drove the heuristic coefficients to ~0. So the two
+# INDEPENDENT neural detectors now carry the ENTIRE verdict (0.5/0.5); when only
+# one is loaded (compute_ensemble redistributes missing keys) it carries it alone.
+# The heuristics stay COMPUTED and fully visible in layer_breakdown as human-
+# readable EVIDENCE, but their weight is 0 -- they inform, they don't vote.
+# (Weights still sum to 1.0 so the ensemble unit tests hold; a 0-weight key
+# contributes 0 and is redistribution-neutral.)
 WEIGHTS = {
-    "aasist":   0.45,
-    "clone_v3": 0.45,
-    "mfcc":     0.025,
-    "breath":   0.025,
-    "phase":    0.025,
-    "liveness": 0.025,
+    "aasist":   0.50,
+    "clone_v3": 0.50,
+    "mfcc":     0.0,
+    "breath":   0.0,
+    "phase":    0.0,
+    "liveness": 0.0,
 }
 
 
