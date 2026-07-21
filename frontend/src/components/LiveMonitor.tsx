@@ -247,6 +247,23 @@ export default function LiveMonitor() {
       </div>
 
       {error && <div className="mt-4 font-mono text-[11px]" style={{ color: C.threat }}>{error}</div>}
+
+      {/* backend product pages: audit / evidence · campaigns · governance · metrics */}
+      <div className="mt-8 pt-6 flex flex-wrap items-center gap-4" style={{ borderTop: `1px solid ${C.faint}` }}>
+        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: C.muted }}>BANK PRODUCT PAGES</span>
+        {[
+          ["Cases · Evidence", "/cases"],
+          ["Campaigns", "/campaigns"],
+          ["Governance", "/governance"],
+          ["Metrics", "/metrics"],
+        ].map(([label, path]) => (
+          <a key={path} href={`${BACKEND}${path}`} target="_blank" rel="noreferrer"
+            className="font-mono text-[11px] underline-offset-4 hover:underline"
+            style={{ color: C.cyan }}>
+            {label} ↗
+          </a>
+        ))}
+      </div>
     </div>
   )
 }
