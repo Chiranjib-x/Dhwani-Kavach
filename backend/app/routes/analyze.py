@@ -18,6 +18,7 @@ class AnalysisResult(BaseModel):
     risk_score: int
     alert_level: str
     layer_breakdown: dict
+    quality: dict = {}
     novelty: float = 0.0
     model_version: str = ""
     scam: dict = {}
@@ -52,11 +53,14 @@ async def analyze_audio(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     result["scam"] = scam
+    _q = result.get("quality", {})
     result.update(fuse(
         deepfake_risk=result["risk_score"],
         scam_score=scam.get("score", 0),
         novelty=result.get("novelty", 0.0),
         txn={"amount": amount, "new_beneficiary": new_beneficiary},
+        quality_ok=_q.get("ok", True),
+        quality_reason=_q.get("reason", ""),
     ))
     policy.annotate(result, policy.is_shadow(shadow))
     result["call_id"] = audit.record("rest", result)

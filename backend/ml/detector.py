@@ -8,6 +8,7 @@ from ml import detector_v3
 from ml import spectrogram_cnn
 from ml import wav2vec2_detector
 from ml import vad
+from ml import quality
 from ml.handcrafted import score_handcrafted
 from ml.breath_detector import score_breath
 from ml.phase_coherence import score_phase
@@ -133,13 +134,24 @@ def detect_samples(audio: np.ndarray) -> dict:
             voiced = [c for c, r in zip(voiced, ratios) if r >= _MIN_SPEECH] \
                 or [voiced[int(np.argmax(ratios))]]
     if not voiced:
+        # No speech to judge -> benign GREEN (not a threat), but flag that we had
+        # nothing to score so the UI never reads it as a confident all-clear.
         return {
             "risk_score": 0, "alert_level": "GREEN",
             "layer_breakdown": {k: 0 for k in WEIGHTS},
             "evidence": {k: 0 for k in _EVIDENCE_KEYS},
             "raw_score": 0.0, "fused_score": 0.0,
+            "quality": {"ok": True, "score": 0, "reason": "no speech detected",
+                        "snr_db": 0.0, "rms": 0.0, "clip_frac": 0.0},
             "model_version": active_model_version(),
         }
+
+    # Input-quality gate: is this window even worth a confident verdict? A too
+    # quiet / clipping / noisy input pushes the audio out-of-distribution, where
+    # the score is unreliable in BOTH directions (may pass a real caller OR wave
+    # through a replayed deepfake). Measured on the voiced region so silence pauses
+    # don't drag the SNR. When it fails, we abstain (UNCERTAIN) instead of guessing.
+    q = quality.assess(np.concatenate(voiced))
 
     # Batch the primary neural forward across all voiced chunks (one backbone pass
     # instead of one per chunk). Falls back to the per-chunk chain when the batched
@@ -184,6 +196,13 @@ def detect_samples(audio: np.ndarray) -> dict:
     # GREEN with high model uncertainty is exactly the zero-day case. Lift to AMBER.
     if novelty >= 0.6 and result["alert_level"] == "GREEN":
         result["alert_level"] = "AMBER"
+    # Abstention (last word): if the input was too degraded to trust, don't emit a
+    # confident GREEN/AMBER/RED at all -- surface UNCERTAIN + the actionable reason
+    # ("move to a quieter place" / "mic level too low"). risk_score is kept for
+    # transparency but the band tells the agent the number can't be trusted.
+    result["quality"] = q
+    if not q["ok"]:
+        result["alert_level"] = "UNCERTAIN"
     return result
 
 

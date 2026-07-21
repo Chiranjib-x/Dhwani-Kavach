@@ -7,20 +7,22 @@ import { decodeTo16kMono, streamPcm, TARGET_SR } from "@/lib/audio-stream"
 const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000"
 const WS_URL = BACKEND.replace(/^http/, "ws") + "/ws/analyze"
 
-type AlertLevel = "GREEN" | "AMBER" | "RED"
+type AlertLevel = "GREEN" | "AMBER" | "RED" | "UNCERTAIN"
 type Scam = { score: number; tactics: string[]; transcript?: string; language?: string }
 type Action = "MONITOR" | "CHALLENGE" | "BLOCK"
+type Quality = { ok: boolean; score: number; reason: string; snr_db?: number; rms?: number; clip_frac?: number }
 type Result = {
   risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number>
+  quality?: Quality
   novelty?: number; scam?: Scam; action?: Action; action_reason?: string
   mode?: "shadow" | "enforce"; enforced?: boolean; call_max?: number
 }
 type WsMsg = Result | { error: string }
 type Alert = { id: number; time: string; risk: number; level: AlertLevel; layer: string }
 
-const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.07)" }
+const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", info: "#38BDF8", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.07)" }
 const LAYERS: [string, string][] = [["aasist", "AASIST"], ["mfcc", "Spectral Biometrics"], ["breath", "Breath Pattern"], ["phase", "Phase Coherence"], ["liveness", "Active Liveness"]]
-const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ? C.warn : l === "GREEN" ? C.ok : C.muted)
+const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ? C.warn : l === "GREEN" ? C.ok : l === "UNCERTAIN" ? C.info : C.muted)
 const bandColor = (score: number) => (score >= 70 ? C.threat : score >= 40 ? C.warn : C.ok)
 const actionColor = (a?: Action) => (a === "BLOCK" ? C.threat : a === "CHALLENGE" ? C.warn : C.ok)
 const TACTIC_LABEL: Record<string, string> = {
@@ -126,6 +128,20 @@ export default function LiveMonitor() {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) analyzeFile(f); e.target.value = "" }} />
         </div>
       </div>
+
+      {/* input-quality banner — the honest "can't judge" state (Problem 3).
+          When the mic/line is too degraded to trust the score, we abstain
+          (UNCERTAIN) and tell the caller exactly what to fix. */}
+      {result?.quality && !result.quality.ok && (
+        <div className="mt-6 rounded-xl px-5 py-3 flex items-center gap-3"
+          style={{ border: `1px solid ${C.info}`, backgroundColor: "rgba(56,189,248,0.06)" }}>
+          <span className="font-mono text-[13px]" style={{ color: C.info }}>◑ INPUT QUALITY LOW</span>
+          <span className="text-[13px]" style={{ color: C.text }}>{result.quality.reason}</span>
+          <span className="font-mono text-[11px] ml-auto" style={{ color: C.muted }}>
+            quality {result.quality.score}/100{typeof result.quality.snr_db === "number" ? ` · SNR ${result.quality.snr_db} dB` : ""} · verdict held
+          </span>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-8 md:grid-cols-2 items-center">
         {/* live gauge */}

@@ -9,95 +9,196 @@ This file is the single source of truth for **where the project stands** and
 
 ---
 
-## 0. START HERE — current state (updated 2026-07)
+## 0. START HERE — current state (updated 2026-07-21)
 
-> Sections 1–10 below are **historical** (they describe the original AASIST.pth +
-> Next.js build). The project has since migrated to an **XLS-R + W2VAASIST** neural
-> detector and a **Vite/TanStack** frontend. Where §1–10 disagree with this section,
-> **this section wins.** The app-flow, API contracts, and "how to run the backend"
-> parts of §1–10 are still broadly correct.
+> Sections 1–10 below are **historical** (original AASIST.pth + Next.js build). The
+> project has since migrated to **XLS-R + W2VAASIST** neural detection and a
+> **Vite/TanStack** frontend, then (this session) added a live WebRTC call demo, an
+> input-quality abstention layer, honest calibration, offline-safe boot, and a
+> researched-but-rejected alternative engine. Where §1–10 disagree with this
+> section, **this section wins.** App-flow/API-contract/"how to run" parts of §1–10
+> are still broadly correct.
 
-### The detector today
-- **Model:** `facebook/wav2vec2-xls-r-300m` backbone truncated to its first 5 encoder
-  layers + a **W2VAASIST** graph-attention head. Code: `backend/ml/detector_v2.py`.
-- **Deployed weights:** a single fine-tuned bundle `backend/models/w2v2aasist_full.safetensors`
-  (~306 MB, backbone + head). The backend auto-loads it (or `DHWANI_MODEL=<path>`).
-- **Fallback:** if the bundle is absent, it falls back to the head-only
-  `backend/models/w2v2aasist_cotrain.safetensors` (**in git**) on a stock XLS-R backbone —
-  runs, but less robust. **Do not pair the new `calibration.json` with this fallback** (it
-  would mis-scale it and over-flag).
+### The detector today — still v2, and that's a deliberate, tested decision
+- **Live verdict path (unchanged this session):** `facebook/wav2vec2-xls-r-300m`
+  truncated to 5 encoder layers + **W2VAASIST** head (`backend/ml/detector_v2.py`),
+  fused 50/50 with `detector_v3.py` (an independent clone-specialist) in
+  `backend/ml/ensemble.py`. Acoustic heuristics (mfcc/breath/phase/liveness) are
+  computed and shown as evidence but carry **zero weight** — measured near-noise,
+  diluting a confident verdict toward AMBER (`ensemble.py`'s WEIGHTS comment has the
+  numbers).
+- **A ported alternative (`detector_v4.py`, XLSR-SLS, a public SOTA checkpoint) was
+  built and A/B tested against v2 across 5 channels — and LOST 4/5** (see
+  "Core-engine research" below). It is **not** in the live path. Don't be surprised
+  it exists in the codebase; it's the seed for the next retrain, not a competitor
+  currently running.
+- **Deployed weights:** `backend/models/w2v2aasist_full.safetensors` (~306 MB,
+  backbone + head, gitignored). Falls back to the head-only
+  `w2v2aasist_cotrain.safetensors` (in git) on a stock backbone if absent — runs,
+  less robust; **don't pair `calibration.json` with this fallback**, it mis-scales.
 
 ### ⚠️ A fresh clone has NO working model — read this first
-Two files are **gitignored** (too big / paired with the bundle), so your clone won't have them:
+Gitignored (too big / paired with a specific bundle):
 | file | what | how to get it |
 |---|---|---|
-| `backend/models/w2v2aasist_full.safetensors` (306 MB) | the fine-tuned detector | **re-run the Kaggle training** (below), or get the file from Vishal |
-| `backend/models/calibration.json` | maps the bundle's scores → alarm scale | comes with the bundle; get it from Vishal, or refit (below) |
+| `backend/models/w2v2aasist_full.safetensors` (306 MB) | the fine-tuned v2 detector | re-run Kaggle training (§ below), or get it from Vishal |
+| `backend/models/calibration.json` | maps v2's scores → alarm scale, fit to that exact bundle | refit yourself (§ below) — takes ~2 min once the backbone is cached |
+| `backend/models/xlsr_sls.safetensors` (1.35 GB, **optional**, only for `detector_v4`/retrain work) | ported public XLSR-SLS checkpoint | `cd backend && python -m tools.port_sls` (one-time, downloads from HF) |
 
-Until you drop those two in `backend/models/`, the app runs on the weaker fallback head.
-**The bundle + calibration must travel together** — the calibration is fit to that exact model.
+The app **does not need** `xlsr_sls.safetensors` to run — only the v2 bundle + calibration matter for the live path.
 
-### How to run (verified this session)
+### The backend boots and scores with ZERO network access (fixed this session)
+Previously `detector_v2`/`detector_v4` called `Wav2Vec2Model.from_pretrained(...)` at
+every startup just to get the *architecture* (weights get fully overwritten by the
+local bundle anyway) — so a DNS hiccup crashed `/api/analyze` with a
+`NameResolutionError`. Fixed: the XLS-R config is vendored locally
+(`backend/models/xlsr_300m_config.json`); the backbone is built from that JSON with
+no HTTP call when a bundle is present. Verified with `HF_HUB_OFFLINE=1
+TRANSFORMERS_OFFLINE=1` — analyze still works.
+
+### How to run
 ```bash
 # Backend → http://localhost:8000
 python -m uvicorn app.main:app --app-dir backend --port 8000
-# Frontend → http://localhost:5173 (Vite)
+# Frontend — NOTE: this project's Vite config defaults to port 8080, NOT 5173.
+# If 8080 is taken it silently bumps to 8081 — check the terminal for the real URL.
 cd frontend && npm install && npm run dev
 ```
-> The backend loads the model into memory **at startup**. If you swap the model or
-> calibration files, **restart the backend** — it will not hot-reload them.
+The backend loads models **at startup only** — restart after swapping any
+`.safetensors`/`calibration.json`.
 
-### Does it work? (measured on Vishal's real clips, `sample_audio/`)
-- ✅ **Flags fakes:** all 10 clone clips → 🔴 RED.
-- ✅ **Own-voice reals:** GREEN/AMBER (no false RED).
-- ❌ **Known weakness:** 2 out-of-domain English *studio* real voices (`lily_original`,
-  `chris_original`) false-positive as fake — `lily` even scores above her own clone.
-  Calibration can't fix inverted scores; this needs **more diverse real training data**.
-- Calibration is **provisional** — fit on ~30 clips. Refit it on a bigger labeled
-  real+fake set for production (see "Retrain / improve" below).
-
-### Kaggle training pipeline (how the bundle is made)
-- Script: `backend/training/train_robust.py` — full fine-tune (backbone lr 1e-5 + head lr 1e-4),
-  on-the-fly telephony-weighted channel augmentation, per-condition + per-source held-out gate,
-  saves the best **full bundle** to `--out`. Now includes **label smoothing + class-balanced
-  sampling** (reduces the over-confidence that made calibration fragile).
-- Run it on Kaggle GPU via one self-contained cell (clone repo → pip install → symlink datasets
-  → `python -m training.train_robust --data <dir> --out /kaggle/working/w2v2aasist_full.safetensors --epochs 6`).
-  Datasets used: ASVspoof2019 LA, Common Voice Hindi, In-The-Wild, Fake-or-Real, + Vishal's own
-  voices folded in. Download the 306 MB bundle from Kaggle Output when done.
-- **Deploy:** A/B locally first — `DHWANI_MODEL=<new.safetensors> python -m eval.run eval/corpus --telephony`
-  — then copy over `backend/models/w2v2aasist_full.safetensors` only if it wins, and refit calibration.
-
-### Retrain / improve (next tickets, evidence-based)
-1. **Kill the studio-voice false positives** → add more **diverse real English/varied-mic**
-   speakers to the Kaggle `real/` folder (and/or the MLAAD multilingual set). This is the
-   highest-value lever per the generalization literature.
-2. **Stronger head** (bigger lift) → swap W2VAASIST for an **SLS or Mamba** classifier on the
-   same XLS-R backbone; these top the In-The-Wild generalization leaderboard.
-3. **Refit calibration** on a real labeled set (`backend/ml/scoring.py` Platt `a,b` + `t_low/t_high`;
-   clamp for `b` was widened to ±8 for the compressed fine-tuned scores).
-   - Research: Speech DF Arena (arXiv 2509.02859), Understanding Generalization (arXiv 2406.03512).
-
-### Key files (current detector)
+### Refit calibration (do this after any model change, or if verdicts feel off)
+```bash
+cd backend
+python -m tools.fit_calibration --exclude=lily_original,chris_original
 ```
-backend/ml/detector_v2.py        active detector (XLS-R + W2VAASIST bundle loader)
+`fit_calibration.py` was rewritten this session — the original version had two real
+bugs (both fixed, both worth knowing about if you touch it again):
+1. It scored only each clip's **first ~4 seconds** (a silent truncation inside
+   `repeat_pad`), while the live app scores the **worst window across the whole
+   file**. A calibration fit on the easy opening of each clip is not honest. Fixed:
+   `_worst_chunk_score()` now mirrors `ml.detector.detect_samples` exactly.
+2. The Platt fit **diverged** (`a=46, b=84`) on a small, near-perfectly-separable
+   dev set — classic logistic-regression blowup — landing far outside
+   `ml/scoring.py`'s runtime safety clamps `[0.5,1.5]`/`[-8,8]`, so the bands printed
+   didn't match what the app would actually run. Fixed with L2 ridge regularization
+   + banding the post-clamp values.
+- `--exclude=` drops named clips from the fit; the tool also **self-flags** any
+  future "OUTLIER REAL" clip automatically (fused score landing at/above `t_low`),
+  so this class of bug surfaces on new data without a hardcoded list.
+- **Current honest result** (14 well-behaved `sample_audio` clips, `lily_original`/
+  `chris_original` excluded): clean EER **0.0%**, real max 0.088, fake min 0.666
+  (gap +0.577). Telephony EER 22.5% (expected — no telephony-specific training yet).
+  Verified live through `/api/analyze`, not just the fitter's own numbers.
+
+### Known, root-caused model gap: `lily_original.mp3` / `chris_original.mp3`
+These two clips **read fake** and are excluded from calibration on purpose — not
+hidden, root-caused. `lily_original` scores clean (0.01–0.12) for its first 10
+seconds, then **inverts** to fake-range (0.87–0.98) from 10s to the end. A threshold
+cannot fix a wrong ranking; this needs the retrain (below). **Don't use these two
+files as "real voice" demo material** — use `Script_1..5` or a fresh live voice.
+
+### Input-quality abstention (new this session — Problem 3: unreliable mics)
+`backend/ml/quality.py` scores every window on **level (RMS), clipping, and
+segmental SNR** and returns a plain-language reason. Wired through
+`ml/detector.py` → `ml/fusion.py` → both API routes → `LiveMonitor.tsx`: a
+too-quiet/clipping/noisy input no longer gets a confident GREEN or RED — it reads
+**UNCERTAIN** with an actionable message ("move to a quieter place", "mic level too
+low — speak up"), and the fuse layer forces action=**CHALLENGE** (never BLOCK on a
+score we don't trust, never a silent false-clear either). Self-check:
+`python -m ml.quality`.
+
+### Live WebRTC call demo (new this session — Problem 2: seamless integration)
+`backend/app/routes/rtc.py` (signaling-only relay, `/ws/rtc/{room}`, media stays
+peer-to-peer — no media server, no Twilio, no cost) + `frontend/src/routes/call.tsx`
+(two roles: Customer / Bank Agent). The agent side taps the **received WebRTC audio
+track digitally** (WebAudio, not a physical speaker→mic replay) and streams it to
+the existing `/ws/analyze`, so the detector sees the call the way a real telephony
+integration would — sidestepping the over-the-air replay gap the whole field
+struggles with (see research below). Two browser tabs, no PSTN/card needed;
+`cloudflared`/`ngrok` for a second physical device.
+**Status: functional but unpolished** — you tested it and found the verdict
+inconsistent on live mic speech. That's not a demo-plumbing bug; it's the same v2
+channel gap documented above (confirmed via the A/B eval, not guessed).
+
+### Core-engine research (this session, in response to "the detection isn't reliable")
+Researched the field (replay-attack literature, Speech DF Arena leaderboard, public
+checkpoints) and **ported the strongest open-weights detector**, XLSR-SLS
+(Zhang et al., ACM MM 2024; 2.14% EER ASVspoof-DF, 7.84% In-the-Wild) into the stack
+with zero fairseq dependency:
+- `backend/tools/port_sls.py` — one-time fairseq→HuggingFace key remap → the
+  1.35 GB bundle (see key gotchas in code comments: DataParallel prefix,
+  `mask_emb`→`masked_spec_embed`, dropped final layer_norm, RAW un-normalized input
+  convention, Tak-style label order).
+- `backend/ml/detector_v4.py` — runtime. **Critical gotcha if you touch this:**
+  feed it exact 64,600-sample windows only. Feeding it the app's normal
+  64,000-sample chunks (repeat-padded to fit) creates a mid-speech splice that the
+  model reads as a synthetic artifact — measured: real-clip mean score 0.46 spliced
+  vs 0.19 exact-window.
+- `backend/eval/ab_channels.py` — channel-robust A/B harness: v2 vs v4 vs
+  mean/max-fusion across {clean, reverb, noise, telephony, replay-sim}, confirm-2
+  aggregate (mirrors the stream aggregator). Run: `python -m eval.ab_channels`
+  (~20-40 min CPU) → `eval/ab_channels.json` (gitignored, generated).
+
+**Verdict: v4 lost 4/5 channels** (clean 34.8% vs v2's 13.6% EER; telephony 50.0%
+vs 27.3%; only won replay 18.2% vs 26.1%). Fusion didn't beat v2 alone either. Root
+cause: v4 is window-unstable on out-of-domain audio (adjacent windows of one real
+clip flip 0.00→1.00) and reads reverb itself as spoof evidence. **v2 stays
+deployed — the A/B gate did its job and prevented what would have felt like an
+upgrade from being a regression.** v4's real value: it *does* fix the lily/chris
+inversions on clean audio, and it's a far better warm-start than stock XLS-R for
+the next retrain.
+
+Literature anchor for why over-the-air/live-mic detection is hard everywhere, not
+just here: Müller et al., "Replay Attacks Against Audio Deepfake Detection"
+(Interspeech 2025, arXiv 2505.14862) — W2V2-AASIST-family EER surges 4.7%→18.2% on
+replayed audio; RIR-augmented retraining recovers to ~11%, not back to baseline.
+
+### The actual fix for the live-mic gap: retrain, not swap (next step, not yet run)
+`backend/training/train_robust.py` now has `--arch sls` (+ `--grad-ckpt`):
+fine-tunes the **ported v4 bundle** (not stock XLS-R) with the existing
+telephony-weighted on-the-fly channel augmentation and per-condition/per-source
+anti-overfit gate. Smoke-tested end-to-end on CPU
+(`--smoke --arch sls`, both archs green). Full Kaggle runbook, rewritten this
+session: **`PHASE-H-KAGGLE.md`** (old version referenced a retired model). This is
+the single highest-value next step — an overnight free-tier T4 run, then A/B via
+`eval/ab_channels.py` (the same gate) before it's trusted with a deploy.
+
+### Key files (current state)
+```
+backend/ml/detector_v2.py        LIVE — XLS-R(5-layer)+W2VAASIST, bundle loader, offline-safe
+backend/ml/detector_v3.py        LIVE — independent clone-specialist, fused 50/50 with v2
+backend/ml/detector_v4.py        NOT live — ported XLSR-SLS, retrain warm-start only
+backend/ml/ensemble.py           neural-only fusion (v2 .5 / v3 .5, heuristics 0 — evidence only)
+backend/ml/quality.py            input-quality gate → UNCERTAIN abstention (new)
 backend/ml/scoring.py            Platt calibration + StreamAggregator (EWMA/hysteresis)
-backend/ml/ensemble.py           neural-dominant fusion (0.90 neural / 0.10 heuristics)
-backend/training/train_robust.py Kaggle fine-tune pipeline (the bundle factory)
+backend/ml/fusion.py             risk+scam+quality → action (MONITOR/CHALLENGE/BLOCK)
+backend/tools/fit_calibration.py rewritten — worst-chunk methodology, ridge-regularized, self-flagging
+backend/tools/port_sls.py        one-time fairseq→HF port for detector_v4 (new)
 backend/tools/augment.py         telephony/reverb/noise channel augmentation
-backend/eval/run.py              A/B eval harness (per-channel EER/AUC on a labeled corpus)
-backend/models/                  w2v2aasist_cotrain.safetensors (in git, fallback head);
-                                 w2v2aasist_full.safetensors + calibration.json (GITIGNORED)
-frontend/src/components/LiveMonitor.tsx  live mic/file streaming UI
-frontend/src/routes/index.tsx            landing page (note: still markets a "5-layer" story)
+backend/training/train_robust.py Kaggle fine-tune, now --arch {v2,sls}
+backend/eval/run.py               A/B eval harness (per-channel EER/AUC, v2-only)
+backend/eval/ab_channels.py      channel-robust A/B: v2 vs v4 vs fusion (new)
+backend/app/routes/rtc.py        WebRTC signaling relay for the live-call demo (new)
+backend/models/                  w2v2aasist_cotrain.safetensors (in git, fallback);
+                                 w2v2aasist_full.safetensors, calibration.json, xlsr_sls.safetensors (GITIGNORED)
+                                 xlsr_300m_config.json (in git — vendored, offline boot)
+frontend/src/routes/call.tsx     WebRTC live-call demo, two roles (new)
+frontend/src/components/LiveMonitor.tsx  live mic/file UI + UNCERTAIN quality banner
+frontend/src/routes/index.tsx    landing page — marketing corrected to match reality (see below)
 ```
 
 ### Honest caveats for whoever takes over
-- The landing page (`routes/index.tsx`) still shows **hardcoded demo numbers** (96/91/88/94/97,
-  "99.2% accuracy") and a "5 layers, all must agree" story. Reality: it's **one neural model**
-  at 90% weight; the 4 heuristic layers are near-noise. Update the marketing to match if you ship.
-- `sample_audio/` (Vishal's real + cloned voices) is **gitignored / private** — the labeled set
-  used for the numbers above. Ask Vishal for it to reproduce the eval.
+- Landing page fabricated metrics ("99.2% accuracy", hardcoded 96/91/88/94/97,
+  "5 layers, all must agree") were **removed this session** — now describes the
+  actual architecture (neural core + evidence signals + honest abstention).
+- `sample_audio/` (Vishal's real + cloned voices) is gitignored/private — the
+  labeled set behind every number above. Ask Vishal for it to reproduce.
+- **The live-mic reliability complaint is real and NOT fixed yet.** Everything in
+  this session either (a) made the existing engine's behavior honest and verified
+  (calibration, offline boot, abstention) or (b) proved a model swap wasn't the
+  answer and built the actual fix's runway (the SLS-seeded retrain). The GPU run
+  is what closes the gap — it hasn't been done.
 
 ---
 

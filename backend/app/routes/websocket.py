@@ -103,6 +103,12 @@ async def ws_analyze(websocket: WebSocket):
             result["risk_score"] = state["risk_score"]
             result["alert_level"] = state["alert_level"]
             result["call_max"] = state["call_max"]
+            # Abstention wins over the smoothed band: a degraded window can't earn a
+            # confident GREEN/RED. detect_samples set quality; re-assert UNCERTAIN
+            # here because StreamAggregator just overwrote alert_level above.
+            _q = result.get("quality", {})
+            if not _q.get("ok", True):
+                result["alert_level"] = "UNCERTAIN"
 
             # Kick off the next scam pass in the background (non-blocking, throttled).
             now = time.monotonic()
@@ -116,6 +122,8 @@ async def ws_analyze(websocket: WebSocket):
                 deepfake_risk=result["risk_score"],
                 scam_score=scam.get("score", 0),
                 novelty=result.get("novelty", 0.0),
+                quality_ok=_q.get("ok", True),
+                quality_reason=_q.get("reason", ""),
             ))
             policy.annotate(result, shadow)
             result["call_id"] = audit.record("ws", result)

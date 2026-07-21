@@ -54,11 +54,29 @@ def available() -> bool:
     return _bundle() is not None or os.path.exists(_ST_PATH) or os.path.exists(_CKPT_PATH)
 
 
+_CONFIG_JSON = os.path.join(os.path.dirname(__file__), "..", "models", "xlsr_300m_config.json")
+
+
+def _stock_or_config_model():
+    """Wav2Vec2Model to overlay weights on. When the fine-tuned bundle exists we
+    only need the ARCHITECTURE (every weight gets overwritten), so build it from
+    the vendored config -- zero network. from_pretrained is only for the
+    fallback path that genuinely needs stock XLS-R weights; if the network is
+    down it retries against the local HF cache instead of crashing the backend
+    (a bank deployment must not need huggingface.co reachable to boot)."""
+    from transformers import Wav2Vec2Config, Wav2Vec2Model
+    if os.path.exists(_BUNDLE_PATH):
+        return Wav2Vec2Model(Wav2Vec2Config.from_json_file(_CONFIG_JSON))
+    try:
+        return Wav2Vec2Model.from_pretrained(_WAV2VEC2_BASE_ID)
+    except Exception:
+        return Wav2Vec2Model.from_pretrained(_WAV2VEC2_BASE_ID, local_files_only=True)
+
+
 def _get_backbone():
     global _backbone
     if _backbone is None:
-        from transformers import Wav2Vec2Model
-        m = Wav2Vec2Model.from_pretrained(_WAV2VEC2_BASE_ID)
+        m = _stock_or_config_model()
         # We only consume hidden_states[5], so the remaining ~18 encoder layers
         # are pure wasted compute per window. Keep the first _HIDDEN_LAYER layers
         # and neutralize the trailing (stable-)layer_norm so last_hidden_state ==

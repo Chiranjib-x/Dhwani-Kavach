@@ -13,7 +13,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Dhwani Kavach — Real-time AI Voice Deepfake Detection" },
-      { name: "description", content: "Detect AI-cloned voices on live banking calls in under 10 seconds. Five-layer detection, 99.2% accuracy." },
+      { name: "description", content: "Detect AI-cloned voices on live banking calls in seconds — a self-supervised neural detector, cross-checked by acoustic signals, that says UNCERTAIN when the line is too poor to judge." },
     ],
   }),
   component: Index,
@@ -33,12 +33,15 @@ const THREATS = [
   { n: "03", t: "Exploit", d: "The deepfake authorizes a transfer. Ears can't tell." },
 ];
 
+// Illustrative per-signal readout for ONE flagged call (not accuracy stats):
+// the neural detector drives the verdict; the acoustic signals are corroborating
+// evidence, so they read lower and don't dominate.
 const DASHBOARD_LAYERS = [
-  { name: "AASIST", v: 96 },
-  { name: "Spectral Biometrics", v: 91 },
-  { name: "Breath Pattern", v: 88 },
-  { name: "Phase Coherence", v: 94 },
-  { name: "Active Liveness", v: 97 },
+  { name: "Neural detector", v: 96 },
+  { name: "Spectral Biometrics", v: 43 },
+  { name: "Breath Pattern", v: 38 },
+  { name: "Phase Coherence", v: 51 },
+  { name: "Active Liveness", v: 88 },
 ];
 
 function Index() {
@@ -124,12 +127,13 @@ function Index() {
         <div className="max-w-[680px] mx-auto">
           <Reveal>
             <h2 className="font-bold tracking-tight text-center" style={{ color: "#F1F5F9", fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
-              Five layers. One verdict.
+              A neural core. Cross-checked.
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mt-4 text-center" style={{ color: "#64748B", fontSize: "1rem" }}>
-              Every layer runs in parallel. All five must agree.
+              A self-supervised neural detector makes the call; acoustic signals corroborate it. When the
+              line is too degraded to be sure, it says UNCERTAIN instead of guessing.
             </p>
           </Reveal>
 
@@ -162,6 +166,11 @@ function Index() {
             <h2 className="font-bold tracking-tight text-center" style={{ color: "#F1F5F9", fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
               From audio to verdict in under 10 seconds.
             </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="mt-4 text-center" style={{ color: "#64748B", fontSize: "0.95rem" }}>
+              Illustrative readout of one flagged call — the neural detector carries the verdict.
+            </p>
           </Reveal>
 
           <Reveal delay={0.1}>
@@ -272,8 +281,8 @@ function Index() {
               score="08"
               color="#22C55E"
               verdict="PROTECTED"
-              note="All layers clear"
-              breakdown={["AASIST · 06", "Spectral · 08", "Breath · 11", "Phase · 07", "Liveness · 04"]}
+              note="Neural detector clear"
+              breakdown={["Neural · 05", "Spectral · 22", "Breath · 72", "Phase · 31", "Liveness · 18"]}
               delay={0}
             />
             <AttackCard
@@ -281,8 +290,8 @@ function Index() {
               score="94"
               color="#FF4D6D"
               verdict="CRITICAL"
-              note="AASIST + Breath triggered"
-              breakdown={["AASIST · 96", "Spectral · 89", "Breath · 92", "Phase · 95", "Liveness · 98"]}
+              note="Neural detector flagged"
+              breakdown={["Neural · 96", "Spectral · 44", "Breath · 75", "Phase · 49", "Liveness · 80"]}
               delay={0.1}
             />
             <AttackCard
@@ -290,8 +299,8 @@ function Index() {
               score="78"
               color="#F59E0B"
               verdict="HIGH RISK"
-              note="Phase + Liveness triggered"
-              breakdown={["AASIST · 71", "Spectral · 74", "Breath · 69", "Phase · 84", "Liveness · 86"]}
+              note="Neural detector — borderline"
+              breakdown={["Neural · 77", "Spectral · 51", "Breath · 73", "Phase · 58", "Liveness · 66"]}
               delay={0.2}
             />
           </div>

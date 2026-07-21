@@ -55,7 +55,7 @@ from torch.utils.data import Dataset, DataLoader
 from scipy.signal import fftconvolve
 
 sys.path.insert(0, os.getcwd())
-from ml import detector_v2
+from ml import detector_v2, detector_v4
 from ml.audio_utils import load_audio, repeat_pad, SAMPLE_RATE
 from ml.vendor.codecfake_model import W2VAASIST
 from ml.telephony import to_telephony
@@ -111,6 +111,13 @@ def _prep(audio):
     return torch.from_numpy(normed.astype(np.float32))
 
 
+def _prep_raw(audio):
+    """augmented waveform -> RAW (64600,) float32 tensor -- the SLS checkpoint was
+    fine-tuned on un-normalized audio (see ml/detector_v4.py), so its fine-tune
+    must match, or the warm start (and the baseline gate) is thrown away."""
+    return torch.from_numpy(repeat_pad(audio, length=_CUT).astype(np.float32))
+
+
 # --------------------------------------------------------------------------- #
 # lazy dataset: load on demand, augment on-the-fly
 # --------------------------------------------------------------------------- #
@@ -118,8 +125,8 @@ class ClipDS(Dataset):
     """items: list of (source, label) where source is a filepath OR a np.array.
     train=True -> random telephony-weighted channel per clip (fresh each epoch).
     cond set   -> fixed channel, deterministic per index (for the val gate)."""
-    def __init__(self, items, train=False, cond=None, rirs=None):
-        self.items, self.train, self.cond, self.rirs = items, train, cond, rirs
+    def __init__(self, items, train=False, cond=None, rirs=None, prep=_prep):
+        self.items, self.train, self.cond, self.rirs, self.prep = items, train, cond, rirs, prep
         self._names = list(_TRAIN_W); self._p = np.array([_TRAIN_W[n] for n in self._names])
         self._p /= self._p.sum()
 
@@ -138,7 +145,7 @@ class ClipDS(Dataset):
         else:
             rng = np.random.default_rng(i)                      # stable val set
             cond = self.cond
-        return _prep(_CONDS[cond](x, rng, self.rirs)), y
+        return self.prep(_CONDS[cond](x, rng, self.rirs)), y
 
 
 # --------------------------------------------------------------------------- #
@@ -170,6 +177,41 @@ class RobustDetector(nn.Module):
         w = h.unsqueeze(1).transpose(2, 3)           # (B, 1, 1024, T)
         _, logits = self.head(w)
         return logits
+
+
+class RobustSLS(nn.Module):
+    """Fine-tune the PORTED public XLSR-SLS checkpoint (ml/detector_v4.py):
+    full 24-layer XLS-R backbone + SLS layer-attention head. Warm start =
+    models/xlsr_sls.safetensors (run tools/port_sls.py first), so training
+    begins from 7.8% In-the-Wild EER and only has to learn CHANNELS + Indian
+    voices, not deepfake detection from scratch.
+
+    Label-convention glue: SLS stores spoof at column 0 (Tak-style), this
+    trainer's labels/loss/scorer assume spoof at column 1 (Codecfake-style).
+    forward() returns the columns FLIPPED -- a pure view, parameters untouched
+    -- so the whole training loop stays convention-agnostic AND the saved
+    bundle keeps the original SLS layout that detector_v4 loads unchanged."""
+
+    def __init__(self, warm=True, smoke=False):
+        super().__init__()
+        if smoke:  # tiny random model, offline: validates plumbing only.
+            from transformers import Wav2Vec2Model, Wav2Vec2Config
+            m = Wav2Vec2Model(Wav2Vec2Config(hidden_size=1024, num_hidden_layers=2,
+                                             num_attention_heads=16, intermediate_size=256))
+            m.config.output_hidden_states = True
+            m.encoder.layer_norm = nn.Identity()
+            self.backbone = m
+            self.head = detector_v4.SLSHead()
+        else:
+            if warm and not detector_v4.available():
+                raise SystemExit("models/xlsr_sls.safetensors missing -- run tools/port_sls.py first")
+            self.backbone, self.head = detector_v4._get()
+
+    def forward(self, x):  # x: (B, 64600) RAW (un-normalized -- see _prep_raw)
+        hs = self.backbone(x).hidden_states
+        layers = torch.stack(hs[1:], dim=1)          # (B, n_layers, T, 1024)
+        logits = self.head(layers)                   # col0=spoof (SLS convention)
+        return logits[:, [1, 0]]                     # -> col1=spoof for the trainer
 
 
 # --------------------------------------------------------------------------- #
@@ -218,10 +260,10 @@ def build_corpus(root, bootstrap, limit, smoke):
 # eval: rank-AUC per channel condition
 # --------------------------------------------------------------------------- #
 @torch.no_grad()
-def _scores(model, items, cond, device, rirs, workers):
+def _scores(model, items, cond, device, rirs, workers, prep=_prep):
     if not items:
         return np.array([]), np.array([])
-    dl = DataLoader(ClipDS(items, cond=cond, rirs=rirs), batch_size=16, num_workers=workers)
+    dl = DataLoader(ClipDS(items, cond=cond, rirs=rirs, prep=prep), batch_size=16, num_workers=workers)
     model.eval(); probs, ys = [], []
     for xb, yb in dl:
         probs.extend(torch.softmax(model(xb.to(device)), 1)[:, 1].cpu().tolist()); ys.extend(yb.tolist())
@@ -235,13 +277,13 @@ def _auc(probs, ys):
     return float((pf[:, None] > pr[None, :]).mean())
 
 
-def evaluate(model, data, device, workers):
+def evaluate(model, data, device, workers, prep=_prep):
     res = {}
     for c in _VAL_CONDS:
-        res[c] = _auc(*_scores(model, data["val"], c, device, data["rir"], workers))
+        res[c] = _auc(*_scores(model, data["val"], c, device, data["rir"], workers, prep))
     if data["user"]:
         for c in ("telephony", "phone_room"):
-            res[f"USER_{c}"] = _auc(*_scores(model, data["user"], c, device, data["rir"], workers))
+            res[f"USER_{c}"] = _auc(*_scores(model, data["user"], c, device, data["rir"], workers, prep))
     return res
 
 
@@ -266,9 +308,18 @@ def main():
     ap.add_argument("--limit", type=int, default=None, help="cap clips per class (debug)")
     ap.add_argument("--train-on-user", action="store_true", help="fold user_* into TRAIN (default: val-only)")
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--arch", choices=("v2", "sls"), default="v2",
+                    help="v2 = truncated XLS-R + W2VAASIST (deploys to detector_v2); "
+                         "sls = full XLS-R + SLS head warm-started from the ported public "
+                         "checkpoint (deploys to detector_v4) -- the channel fine-tune "
+                         "that keeps SLS's in-the-wild generalization")
+    ap.add_argument("--grad-ckpt", action="store_true",
+                    help="gradient checkpointing (fits --arch sls full-backbone training on a T4)")
     args = ap.parse_args()
-    if args.smoke and args.out == _OUT:  # never let a throwaway smoke run clobber the deployed bundle
-        args.out = _OUT + ".smoke"
+    if args.arch == "sls" and args.out == _OUT:
+        args.out = os.path.join(os.path.dirname(_OUT), "xlsr_sls_finetuned.safetensors")
+    if args.smoke and args.out in (_OUT, os.path.join(os.path.dirname(_OUT), "xlsr_sls_finetuned.safetensors")):
+        args.out = args.out + ".smoke"  # never let a throwaway smoke run clobber a deployed bundle
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     workers = 0 if args.smoke else args.workers
@@ -277,7 +328,14 @@ def main():
     if args.train_on_user and data["user"]:
         data["train"] += data["user"]; data["user"] = []
 
-    model = RobustDetector(warm=not args.smoke, smoke=args.smoke).to(device)
+    if args.arch == "sls":
+        model = RobustSLS(warm=not args.smoke, smoke=args.smoke).to(device)
+        prep = _prep_raw
+    else:
+        model = RobustDetector(warm=not args.smoke, smoke=args.smoke).to(device)
+        prep = _prep
+    if args.grad_ckpt:
+        model.backbone.gradient_checkpointing_enable()
     opt = torch.optim.AdamW([
         {"params": model.head.parameters(), "lr": args.lr_head},
         {"params": model.backbone.parameters(), "lr": args.lr_backbone},
@@ -293,10 +351,10 @@ def main():
     counts = np.bincount(labels, minlength=2)
     weights = (1.0 / np.maximum(counts, 1))[labels]
     sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=len(labels), replacement=True)
-    train_dl = DataLoader(ClipDS(data["train"], train=True, rirs=data["rir"]),
+    train_dl = DataLoader(ClipDS(data["train"], train=True, rirs=data["rir"], prep=prep),
                           batch_size=args.batch, sampler=sampler, num_workers=workers, drop_last=True)
 
-    base = evaluate(model, data, device, workers)
+    base = evaluate(model, data, device, workers, prep)
     print(f"\nBASELINE  {_fmt(base)}\n", flush=True)
     min_base = min(v for k, v in base.items() if not k.startswith("USER"))
 
@@ -310,7 +368,7 @@ def main():
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step(); tot += float(loss); nb += 1
-        res = evaluate(model, data, device, workers)
+        res = evaluate(model, data, device, workers, prep)
         worst = min(v for k, v in res.items() if not k.startswith("USER"))
         flag = ""
         # anti-overfit gate: keep only if the WEAKEST channel beats baseline's weakest
@@ -329,8 +387,12 @@ def main():
         print("\nno epoch beat baseline's weakest channel without regressing clean -- nothing saved.", flush=True)
         return
     print(f"\nBEST full model saved -> {args.out}  (weakest channel {min_base:.3f} -> {best:.3f})", flush=True)
-    print("Deploy: A/B via DHWANI_MODEL=<path> python -m eval.run on your real clips, then copy the bundle "
-          "to models/w2v2aasist_full.safetensors ONLY if it wins (backend auto-loads that path).", flush=True)
+    if args.arch == "sls":
+        print("Deploy: A/B via DHWANI_SLS_MODEL=<path> python -m eval.ab_channels, then copy the bundle "
+              "to models/xlsr_sls.safetensors ONLY if it wins (detector_v4 auto-loads that path).", flush=True)
+    else:
+        print("Deploy: A/B via DHWANI_MODEL=<path> python -m eval.run on your real clips, then copy the bundle "
+              "to models/w2v2aasist_full.safetensors ONLY if it wins (backend auto-loads that path).", flush=True)
     print(f"done in {time.time()-t0:.0f}s", flush=True)
 
 
