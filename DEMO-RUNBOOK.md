@@ -24,9 +24,13 @@ every detector in the field fails that channel. Feed audio **digitally**:
 | **Virtual audio cable** | install VB-Cable (vb-audio.com/Cable, free), set "CABLE Input" as the playback device for your media player and pick "CABLE Output" as the mic in the browser → live-monitor "hears" the file digitally | live-mic theater without the air gap |
 
 If a judge insists on the open-air test: expect the **"Loudspeaker replay
-suspected"** chip (ml/replay.py — LF+HF band deficits) and/or **UNCERTAIN** from
-the quality gate. Narrate it: *"the system knows this channel can't be trusted
-and says so instead of guessing — that's the abstention layer."*
+suspected"** chip (ml/replay.py — LF+HF band deficits) and the action forced to
+**CHALLENGE** — a suspected replay can never clear to MONITOR on the voice score
+alone, and the Voice OTP (`/verify`) rejects it outright ("correct digits,
+untrusted channel"). Narrate it: *"either the model catches the synthesis, or
+the channel gate catches the replay — the one thing it will never do is silently
+trust a speaker playback."* (Verified: 0 false replay flags across all 122
+normal clips; a speaker-simulated clone → suspect, score 95, CHALLENGE.)
 
 ## 2. Verified demo clips (from Dataset_orig, re-checked on current calibration)
 

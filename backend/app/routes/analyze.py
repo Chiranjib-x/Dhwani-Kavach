@@ -55,6 +55,7 @@ async def analyze_audio(
 
     result["scam"] = scam
     _q = result.get("quality", {})
+    _rp = result.get("replay", {})
     result.update(fuse(
         deepfake_risk=result["risk_score"],
         scam_score=scam.get("score", 0),
@@ -62,6 +63,7 @@ async def analyze_audio(
         txn={"amount": amount, "new_beneficiary": new_beneficiary},
         quality_ok=_q.get("ok", True),
         quality_reason=_q.get("reason", ""),
+        replay_suspect=_rp.get("suspect", False),
     ))
     policy.annotate(result, policy.is_shadow(shadow))
     result["call_id"] = audit.record("rest", result)

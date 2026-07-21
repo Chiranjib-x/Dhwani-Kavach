@@ -75,12 +75,19 @@ async def verify_challenge(challenge_id: str = Form(...), audio: UploadFile = Fi
 
     heard = _spoken_digits(text)
     digits_ok = expected in heard  # tolerate leading/trailing chatter
-    voice_ok = det["alert_level"] in ("GREEN", "AMBER")  # RED/UNCERTAIN fail
+    # A suspected loudspeaker replay (see ml/replay.py) can still read a clean
+    # deepfake score -- the neural detector wasn't trained on that channel --
+    # so a correct-but-replayed answer must not pass just because the voice
+    # score looks fine on it.
+    replay_suspect = det.get("replay", {}).get("suspect", False)
+    voice_ok = det["alert_level"] in ("GREEN", "AMBER") and not replay_suspect
     passed = digits_ok and voice_ok
     _pending.pop(challenge_id, None)  # single use
 
     if not digits_ok:
         reason = "challenge digits not spoken correctly — possible replayed/pre-recorded audio"
+    elif replay_suspect:
+        reason = "loudspeaker replay suspected — correct digits, untrusted channel"
     elif not voice_ok:
         reason = ("synthetic voice detected — correct answer, wrong speaker type"
                   if det["alert_level"] == "RED" else "input quality too low to trust")
