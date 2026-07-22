@@ -15,11 +15,13 @@ export default function Nav() {
           </svg>
           <span className="text-[#F1F5F9]">Dhwani-Kavach</span>
         </a>
-        <div className="hidden md:flex items-center gap-8 text-[13px] text-[#64748B]">
+        <div className="hidden md:flex items-center gap-7 text-[13px] text-[#64748B]">
           <a href="#threat" className="hover:text-[#F1F5F9] transition-colors">Threat</a>
           <a href="#defense" className="hover:text-[#F1F5F9] transition-colors">Defense</a>
-          <a href="#dashboard" className="hover:text-[#F1F5F9] transition-colors">Dashboard</a>
-          <a href="#simulate" className="hover:text-[#F1F5F9] transition-colors">Simulate</a>
+          <a href="#demos" className="hover:text-[#F1F5F9] transition-colors">Demos</a>
+          <a href="/call" className="hover:text-[#F1F5F9] transition-colors">Live Call</a>
+          <a href="/verify" className="hover:text-[#F1F5F9] transition-colors">Voice OTP</a>
+          <a href="/voiceprint" className="hover:text-[#F1F5F9] transition-colors">Voiceprint</a>
         </div>
         <a
           href="#demo"

@@ -115,9 +115,9 @@
         <p style="margin-top:10px;color:var(--cyan)">Detected by our neural voice engine.</p>
       </div>
       <div class="card" style="border-color:rgba(245,158,11,.35)">
-        <h3 style="color:var(--warn)">2 &middot; Human social engineering</h3>
-        <p>A real human scammer with a script: urgency, authority impersonation, isolation, OTP requests, threats. No deepfake &mdash; so deepfake-only detectors score it <b>safe</b>.</p>
-        <p style="margin-top:10px;color:var(--warn)">Detected by our scam-script LLM layer.</p>
+        <h3 style="color:var(--warn)">2 &middot; Coerced customer (APP fraud)</h3>
+        <p>A <b>real</b> customer, in their <b>real</b> voice, coached or coerced in real time into authorising a transfer. Voice biometrics pass, deepfake detection passes &mdash; deepfake-only tools score it <b>safe</b>.</p>
+        <p style="margin-top:10px;color:var(--warn)">Detected by our APP-fraud / coercion LLM layer.</p>
       </div>
     </div>
     <p class="lead" style="margin-top:20px">A real defense must cover <span class="big">both</span>. That is the core of our design.</p>
@@ -139,16 +139,17 @@
     <h2>One decision per call: Monitor / Challenge / Block</h2>
     <div class="flow">
       <span class="node">Live audio</span><span class="arrow">&rarr;</span>
-      <span class="node">Voice deepfake (5-layer)</span><span class="arrow">+</span>
-      <span class="node">Scam-script (STT&rarr;LLM)</span><span class="arrow">+</span>
-      <span class="node">Novelty</span><span class="arrow">+</span>
-      <span class="node">Voiceprint / campaign</span><span class="arrow">&rarr;</span>
+      <span class="node">Dual neural deepfake</span><span class="arrow">+</span>
+      <span class="node">APP-fraud (STT&rarr;LLM)</span><span class="arrow">+</span>
+      <span class="node">Replay &amp; quality gates</span><span class="arrow">+</span>
+      <span class="node">Novelty / campaign</span><span class="arrow">&rarr;</span>
       <span class="node acc">Fusion + txn context</span><span class="arrow">&rarr;</span>
-      <span class="node acc">MONITOR / CHALLENGE / BLOCK</span>
+      <span class="node acc">MONITOR / CHALLENGE / BLOCK</span><span class="arrow">&rarr;</span>
+      <span class="node acc">step-up: voice-OTP / voiceprint / human</span>
     </div>
     <div class="grid3" style="margin-top:26px">
       <div class="card"><div class="stat" style="color:var(--cyan)">~4s</div><p class="muted" style="margin-top:8px">first verdict, mid-call</p></div>
-      <div class="card"><div class="stat" style="color:var(--cyan)">5+LLM</div><p class="muted" style="margin-top:8px">layers, fused &amp; explainable</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">5 signals</div><p class="muted" style="margin-top:8px">fused, explainable, then escalated</p></div>
       <div class="card"><div class="stat" style="color:var(--cyan)">0</div><p class="muted" style="margin-top:8px">audio stored — verdict only</p></div>
     </div>
     <div class="foot"><span>DHWANI-KAVACH</span><span>SOLUTION OVERVIEW</span></div>
@@ -181,6 +182,7 @@
       <li>Two <b>independent</b> architectures (different training / failure modes) &rarr; fusion is robust where one model overfits. Optional learned logistic-regression fusion.</li>
       <li>Weighted &rarr; 0&ndash;100 risk, <b>Platt-calibrated</b>. Bands <span style="color:var(--ok)">GREEN &lt;40</span> &middot; <span style="color:var(--warn)">AMBER 40&ndash;69</span> &middot; <span style="color:var(--threat)">RED &ge;70</span>. Worst 4s window wins.</li>
       <li><b>Silero VAD</b> gates non-speech (hold music, line noise), not just silence.</li>
+      <li><b>Two safety gates</b> sit over the score: a <b>replay-channel gate</b> (a clone through a speaker can never clear on the voice score alone) and an <b>input-quality gate</b> (too degraded &rarr; <span style="color:var(--warn)">UNCERTAIN</span>, never a false all-clear).</li>
     </ul>
     <div class="foot"><span>DHWANI-KAVACH</span><span>DETECTION LAYERS</span></div>
   </section>
@@ -194,27 +196,28 @@
       <li>Measured on <span class="big">real</span> ElevenLabs clones + real voices it was <span class="no">near-random: AUC 0.63</span> — a textbook out-of-domain failure (M&uuml;ller et al., Interspeech 2022: SSL detectors degrade 200&ndash;1000% cross-domain).</li>
       <li>Fix: <span class="big">two independent XLS-R detectors + fusion</span> — a codec/artifact specialist and a clone specialist.</li>
     </ul>
-    <table style="max-width:760px">
-      <tr><th>On our labeled real-vs-clone set</th><th>EER</th><th>AUC</th></tr>
-      <tr><td>v1 &mdash; single wav2vec2 (measured)</td><td class="no">40%</td><td class="no">0.63</td></tr>
-      <tr><td class="us">current &mdash; dual XLS-R + fusion</td><td class="us">~6.7%</td><td class="us">0.996</td></tr>
+    <table style="max-width:820px">
+      <tr><th>On our labeled real-vs-clone set (122 clips)</th><th>Accuracy</th><th>EER</th><th>AUC</th></tr>
+      <tr><td>v1 &mdash; single wav2vec2 (measured)</td><td class="no">&mdash;</td><td class="no">40%</td><td class="no">0.63</td></tr>
+      <tr><td class="us">current &mdash; dual XLS-R + fusion (calibrated)</td><td class="us">99.2%</td><td class="us">1.6%</td><td class="us">0.999</td></tr>
     </table>
-    <p class="muted" style="margin-top:12px;font-size:13px">The lesson that drives the design: never trust one detector&rsquo;s leaderboard number.</p>
+    <p class="muted" style="margin-top:12px;font-size:13px">Measured &amp; reproducible: <span style="font-family:var(--mono)">cd backend &amp;&amp; python -m eval.run ../Dataset_orig</span>. The lesson that drives the design: never trust one detector&rsquo;s leaderboard number.</p>
     <div class="foot"><span>DHWANI-KAVACH</span><span>MODEL &amp; GENERALIZATION</span></div>
   </section>
 
-  <!-- 10 SCAM + MULTILINGUAL -->
+  <!-- 10 APP-FRAUD + MULTILINGUAL -->
   <section class="slide">
-    <div class="kicker">Deep dive &middot; scam-script layer</div>
-    <h2>Catching the human scammer</h2>
+    <div class="kicker">Deep dive &middot; APP-fraud / coercion layer</div>
+    <h2>The signal biometrics and deepfake detection can&rsquo;t see</h2>
     <ul style="font-size:clamp(14px,1.5vw,19px)">
-      <li>Pipeline: rolling audio &rarr; <b>Whisper</b> speech-to-text &rarr; <b>Nemotron LLM</b> &rarr; scam score + tactics.</li>
-      <li>Tactics: <span class="pill">urgency</span> <span class="pill">authority impersonation</span> <span class="pill">isolation</span> <span class="pill">new-beneficiary</span> <span class="pill">OTP/PIN request</span> <span class="pill">threat</span></li>
-      <li>Runs in the background every ~4s over the last ~8s — never blocks the 2s detection cadence.</li>
-      <li><span class="big">Multilingual:</span> Whisper auto-detects language; the LLM reasons in Hindi &amp; Hinglish. Verified: Hindi scam &rarr; <span style="color:var(--warn)">90/100</span>.</li>
+      <li>The call is a <b>bank agent &harr; customer</b>. The agent is legit and the voice is real &mdash; so the only fraud signal is the <b>conversation</b>: a genuine customer being manipulated into authorising a transfer.</li>
+      <li>Pipeline: rolling audio &rarr; <b>Whisper</b> STT &rarr; <b>Llama-3.1-8B-Instruct</b> (NIM) &rarr; APP-fraud score + tactics.</li>
+      <li>Tactics: <span class="pill">coaching</span> <span class="pill">duress</span> <span class="pill">scam narrative</span> <span class="pill">agent pressure</span> <span class="pill">high-risk intent</span> <span class="pill">third-party benefit</span></li>
+      <li>Runs in the background every ~4s over the last ~8s &mdash; never blocks the 2s detection cadence.</li>
+      <li><span class="big">Multilingual:</span> Whisper auto-detects language; the LLM reasons in Hindi &amp; Hinglish. Verified: coached-transfer call &rarr; <span style="color:var(--warn)">80/100</span>, benign enquiry &rarr; 0.</li>
       <li>Fail-safe: no key / no STT / offline &rarr; neutral; voice detection unaffected.</li>
     </ul>
-    <div class="foot"><span>DHWANI-KAVACH</span><span>SCAM-SCRIPT</span></div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>APP-FRAUD LAYER</span></div>
   </section>
 
   <!-- 11 FUSION -->
@@ -239,6 +242,26 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <div class="foot"><span>DHWANI-KAVACH</span><span>DECISION FUSION</span></div>
   </section>
 
+  <!-- 11b VERIFICATION / STEP-UP TIER -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; verification &amp; step-up</div>
+    <h2>A flagged call is a funnel, not a dead end</h2>
+    <div class="flow">
+      <span class="node">CHALLENGE / BLOCK</span><span class="arrow">&rarr;</span>
+      <span class="node acc">synthetic / replay</span><span class="arrow">&rarr;</span>
+      <span class="node">Voice-OTP + 1:1 voiceprint</span>
+      <span class="arrow" style="margin-left:18px">&nbsp;</span>
+      <span class="node acc" style="border-color:var(--warn);color:var(--warn)">coerced customer</span><span class="arrow">&rarr;</span>
+      <span class="node">human agent + cooling-off</span>
+    </div>
+    <div class="grid2" style="margin-top:22px">
+      <div class="card"><h3>Voice-OTP + voiceprint</h3><p>A fresh one-time code the caller must <b>speak</b> (a recording can&rsquo;t answer) + an <b>ECAPA 1:1 voiceprint</b> that proves it&rsquo;s <i>this</i> customer, not just a live human. A loudspeaker replay is rejected outright.</p><p style="margin-top:8px;color:var(--cyan)">Verified: same-speaker cosine 0.80 vs 0.15 different; enroll&rarr;verify live.</p></div>
+      <div class="card"><h3 style="color:var(--warn)">Coercion &rarr; a human</h3><p>A coached <b>real</b> customer passes every voice check &mdash; a second voice gate is theatre. So an APP-fraud flag routes to a <b>human agent + cooling-off</b> before the money moves. Honest by design.</p></div>
+    </div>
+    <p class="lead" style="margin-top:16px;color:var(--cyan)">Passive detection <b>and</b> active verification &mdash; one funnel, the two apps working together.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>VERIFICATION &amp; STEP-UP</span></div>
+  </section>
+
   <!-- 12 NOVELTY + CAMPAIGNS -->
   <section class="slide">
     <div class="kicker">Deep dive &middot; novelty &amp; campaigns</div>
@@ -256,13 +279,13 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <h2>Real phone lines — the hard part, honestly</h2>
     <ul>
       <li>Real calls are 8&nbsp;kHz, band-limited (300&ndash;3400&nbsp;Hz), G.711 &micro;-law, and lossy.</li>
-      <li>We built a <b>channel-robust training pipeline</b> (train_robust.py) that degrades audio on the fly, and an <b>A/B eval harness</b> (eval/run.py) that measures the phone-line cost.</li>
-      <li>Measured today: telephony is still a <span class="no">weakness — AUC ~0.62&ndash;0.82</span> vs 0.996 clean.</li>
-      <li>We show this honestly — the pipeline to close the gap is built; more diverse channel data is the next run.</li>
+      <li>We built a <b>channel-robust training pipeline</b> (train_robust.py) that degrades audio on the fly &mdash; telephony, phone-room, reverb, noise, and <b>loudspeaker-replay</b> conditions &mdash; and an <b>A/B eval harness</b> (eval/run.py).</li>
+      <li>Live model today: <span class="no">weak on phone channels (AUC ~0.62&ndash;0.82)</span> vs <b>0.999 clean</b>. We show this honestly.</li>
+      <li>Just completed an 8-epoch robust retrain on 13.8k clips: worst channel <span style="color:var(--ok)">0.47 &rarr; 0.84 AUC</span> on the augmented eval. <b>Validating against the clean set before deploy</b> &mdash; we only promote a model that doesn&rsquo;t regress the 99.2%.</li>
     </ul>
     <div class="grid2" style="margin-top:18px">
-      <div class="card"><div class="stat" style="color:var(--warn)">0.996 &rarr; ~0.7</div><p class="muted" style="margin-top:8px">clean &rarr; phone AUC (the gap we&rsquo;re closing)</p></div>
-      <div class="card"><div class="stat" style="color:var(--cyan)">pipeline built</div><p class="muted" style="margin-top:8px">channel-robust retraining + A/B eval</p></div>
+      <div class="card"><div class="stat" style="color:var(--warn)">0.47 &rarr; 0.84</div><p class="muted" style="margin-top:8px">worst-channel AUC after robust retrain</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">validating</div><p class="muted" style="margin-top:8px">A/B on real clips before it goes live</p></div>
     </div>
     <div class="foot"><span>DHWANI-KAVACH</span><span>TELEPHONY</span></div>
   </section>
@@ -288,10 +311,12 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <h2>Detector accuracy is table-stakes; the gap is everything else</h2>
     <table>
       <tr><th>Capability</th><th>Academic (AASIST/RawNet2)</th><th>Commercial cloud</th><th>Dhwani-Kavach</th></tr>
-      <tr><td>Real-clone set (labeled)</td><td>not reported</td><td>not reported</td><td class="us">AUC 0.996 / EER ~6.7%</td></tr>
+      <tr><td>Real-clone set (labeled, 122 clips)</td><td>not reported</td><td>not reported</td><td class="us">AUC 0.999 / EER 1.6% / 99.2%</td></tr>
       <tr><td>Modern clone clips</td><td class="no">degrades (20&ndash;40%)</td><td class="mid">good</td><td class="us">100% flagged</td></tr>
-      <tr><td>Telephony (8&nbsp;kHz)</td><td class="no">usually untested</td><td class="mid">varies</td><td class="mid">weak (~0.62&ndash;0.82) — active</td></tr>
-      <tr><td>Human scam (no deepfake)</td><td class="no">&times;</td><td class="no">&times;</td><td class="us yes">&#10003; LLM layer</td></tr>
+      <tr><td>Telephony (8&nbsp;kHz)</td><td class="no">usually untested</td><td class="mid">varies</td><td class="mid">gap — robust retrain in validation</td></tr>
+      <tr><td>Human scam / coerced customer</td><td class="no">&times;</td><td class="no">&times;</td><td class="us yes">&#10003; APP-fraud LLM layer</td></tr>
+      <tr><td>Loudspeaker-replay channel</td><td class="no">&times;</td><td class="no">&times;</td><td class="us yes">&#10003; channel gate</td></tr>
+      <tr><td>1:1 voiceprint step-up (identity)</td><td class="no">&times;</td><td class="mid">separate product</td><td class="us yes">&#10003; built-in tier</td></tr>
       <tr><td>Deployment</td><td class="no">research code</td><td class="no">cloud API</td><td class="us yes">on-prem Docker</td></tr>
       <tr><td>Explainability &amp; governance</td><td class="no">&times;</td><td class="mid">limited</td><td class="us yes">&#10003; built-in</td></tr>
       <tr><td>Campaign / fraud-ring intel</td><td class="no">&times;</td><td class="mid">some</td><td class="us yes">&#10003;</td></tr>
@@ -373,15 +398,15 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <h2>What&rsquo;s a v1 today — and the upgrade path</h2>
     <div class="grid2">
       <div><ul>
-        <li><b>Small eval set (30 clips)</b> &rarr; directional; a large fixed benchmark is in progress (harness built).</li>
-        <li><b>Telephony is a measured weakness</b> (AUC ~0.62&ndash;0.82) &rarr; channel-robust retraining is the fix.</li>
-        <li><b>Out-of-domain studio real voices false-positive</b> &rarr; needs more diverse real data.</li>
-        <li><b>Default ensemble under-performs its neural core</b> &rarr; deploy calibration + fusion (EER 20% &rarr; 13% &rarr; 3%).</li>
+        <li><b>Eval set is 122 clips</b> &rarr; strong but directional; a larger fixed benchmark is in progress (harness built).</li>
+        <li><b>Telephony is a measured weakness</b> (AUC ~0.62&ndash;0.82) &rarr; robust retrain done (0.47&rarr;0.84 worst channel), validating before deploy.</li>
+        <li><b>Out-of-domain studio real voices can false-positive</b> &rarr; needs more diverse real data.</li>
+        <li><b>Live conversion &amp; adversarial evasion</b> are the honest frontier &rarr; the retrain + red-team loop is the answer.</li>
       </ul></div>
       <div><ul>
-        <li>Thresholds (0.85, calibration, fusion) tuned on thin data &rarr; refit at scale.</li>
+        <li>Thresholds &amp; calibration tuned on our set &rarr; refit on the bank&rsquo;s live traffic in shadow mode.</li>
         <li>LLM is a cloud call &rarr; <b>on-prem NIM container</b> (base-URL change).</li>
-        <li>Customer voice-identity not built yet; <b>adversarial-evasion</b> untested.</li>
+        <li>Voice-OTP + 1:1 voiceprint identity is <b>now built</b>; runs as a companion service alongside the shield.</li>
       </ul></div>
     </div>
     <p class="lead" style="margin-top:16px;color:var(--cyan)">We&rsquo;d rather show you the roadmap than pretend it&rsquo;s finished.</p>
@@ -392,13 +417,14 @@ high_value = new payee OR amount &ge; &#8377;50,000
   <section class="slide center">
     <div class="kicker">Live product demo</div>
     <h1 style="font-size:clamp(28px,3.8vw,52px)">See it on a live call</h1>
-    <ul style="margin-top:24px;max-width:62ch">
-      <li>Real voice &rarr; <span class="yes">GREEN</span>. My clone &rarr; <span class="no">RED</span>, mid-call.</li>
-      <li>A scam script in my <b>real</b> voice &rarr; tactics light up, action escalates.</li>
-      <li>The same clone through an <b>8&nbsp;kHz phone filter</b> &rarr; still <span class="no">RED</span>.</li>
+    <ul style="margin-top:24px;max-width:64ch">
+      <li>Real voice &rarr; <span class="yes">GREEN</span>. My clone &rarr; <span class="no">RED</span>, mid-call, with the 10-second clock.</li>
+      <li>A coached-transfer script in my <b>real</b> voice &rarr; APP-fraud tactics light up, action escalates.</li>
+      <li>A clone <b>through a speaker</b> &rarr; replay gate forces <span class="mid">CHALLENGE</span>; the flag then <b>steps up to Voice-OTP</b>.</li>
+      <li><b>Voiceprint demo:</b> enroll once, then verify by reading fresh digits &mdash; 1:1 identity, live.</li>
       <li>Backend product pages: audit / evidence &middot; campaigns &middot; governance &middot; metrics.</li>
     </ul>
-    <p class="muted" style="margin-top:22px;font-family:var(--mono);font-size:13px">Running locally, on-prem — no internet dependency for detection.</p>
+    <p class="muted" style="margin-top:20px;font-family:var(--mono);font-size:13px">Surfaces: /&nbsp;·&nbsp;/call&nbsp;·&nbsp;/verify&nbsp;·&nbsp;/voiceprint &mdash; running locally, on-prem, no internet dependency for detection.</p>
     <div class="foot"><span>DHWANI-KAVACH</span><span>DEMO</span></div>
   </section>
 
@@ -412,7 +438,7 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <div class="grid2">
       <div><h3>Why TRL 5&ndash;6</h3><ul>
         <li>Full working prototype, end-to-end, real-time.</li>
-        <li>Validated on realistic data: ASVspoof + real Indian voices + modern fakes + telephony (4% / 6%).</li>
+        <li>Validated on realistic data: real Indian voices + modern commercial clones &mdash; <b>99.2% acc / EER 1.6%</b> clean; telephony the honest gap.</li>
         <li>Deployable artifact: on-prem Docker, API, governance, metrics.</li>
       </ul></div>
       <div><h3>Path to TRL 7&ndash;8</h3><ul>
@@ -429,10 +455,10 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <div class="kicker">Project timeline &amp; roadmap</div>
     <h2>What we built — and what&rsquo;s next</h2>
     <div class="timeline">
-      <div class="tl"><span class="when">Done</span><span>Core shield: 5-layer deepfake engine (wav2vec2), scam-script LLM, decision fusion, novelty, audit.</span></div>
+      <div class="tl"><span class="when">Done</span><span>Core shield: dual-neural deepfake engine (XLS-R), APP-fraud LLM, decision fusion, novelty, audit &mdash; 99.2% / EER 1.6% / AUC 0.999.</span></div>
       <div class="tl"><span class="when">Done</span><span>Edge phases: shadow-mode pilot, multilingual, evidence packs, fraud-campaign detection, governance.</span></div>
-      <div class="tl"><span class="when">Done</span><span>Telephony-robust retrain deployed &mdash; 4% clean / 6% phone-line EER.</span></div>
-      <div class="tl"><span class="when">Next</span><span>Customer voice-identity + liveness; embedding-based novelty; broader generator diversity.</span></div>
+      <div class="tl"><span class="when">Done</span><span>Verification tier: Voice-OTP + 1:1 voiceprint (ECAPA) identity, and the escalation funnel a flagged call routes into.</span></div>
+      <div class="tl"><span class="when">Validating</span><span>Channel-robust retrain (telephony/replay): worst channel 0.47&rarr;0.84 AUC, A/B before deploy.</span></div>
       <div class="tl"><span class="when">Bank PoC</span><span>30-day shadow pilot &rarr; threshold calibration &rarr; enforce &rarr; production integration.</span></div>
     </div>
     <div class="foot"><span>DHWANI-KAVACH</span><span>ROADMAP</span></div>
@@ -443,12 +469,43 @@ high_value = new payee OR amount &ge; &#8377;50,000
     <div class="kicker">Integration with existing systems</div>
     <h2>Three plug-in points, one API</h2>
     <div class="grid3">
-      <div class="card"><h3>Contact centre (primary)</h3><p>SIPREC fork of the live call &rarr; risk badge on the agent screen &amp; a RED signal into the fraud engine to auto-trigger step-up auth.</p></div>
-      <div class="card"><h3>Voice-biometric anti-spoof</h3><p>Runs in front of voice auth: biometrics say &ldquo;it&rsquo;s customer X&rdquo;, we say &ldquo;and it&rsquo;s a live human, not a clone.&rdquo;</p></div>
+      <div class="card"><h3>Contact centre (primary)</h3><p>SIPREC fork of the live call &rarr; risk badge on the agent screen, and the verdict&rsquo;s <b>escalation directive</b> auto-triggers step-up: Voice-OTP / 1:1 voiceprint, or a human hand-off for a coerced customer.</p></div>
+      <div class="card"><h3>Voice-biometric anti-spoof</h3><p>Runs in front of voice auth: biometrics say &ldquo;it&rsquo;s customer X&rdquo;, we say &ldquo;and it&rsquo;s a live human, not a clone&rdquo; &mdash; and our 1:1 voiceprint can <b>be</b> that identity check.</p></div>
       <div class="card"><h3>Recorded / dispute review</h3><p>Batch-score recorded calls &amp; voicenotes via REST for investigations.</p></div>
     </div>
-    <p class="lead" style="margin-top:20px">Same verdict contract everywhere: <span class="pill">risk_score</span> <span class="pill">alert_level</span> <span class="pill">action</span> <span class="pill">tactics</span> <span class="pill">campaign</span></p>
+    <p class="lead" style="margin-top:20px">Same verdict contract everywhere: <span class="pill">risk_score</span> <span class="pill">alert_level</span> <span class="pill">action</span> <span class="pill">escalation</span> <span class="pill">tactics</span> <span class="pill">replay</span> <span class="pill">campaign</span></p>
     <div class="foot"><span>DHWANI-KAVACH</span><span>INTEGRATION</span></div>
+  </section>
+
+  <!-- 24b INTEGRATION CONTRACT -->
+  <section class="slide">
+    <div class="kicker">Integration &middot; the actual contract</div>
+    <h2>One JSON verdict your systems already know how to act on</h2>
+    <div class="grid2" style="align-items:start">
+      <div>
+        <div class="code">POST /api/analyze   ·   WS /ws/analyze
+{
+  "risk_score": 96,
+  "alert_level": "RED",
+  "action": "BLOCK",
+  <span style="color:#5EEAD4">"escalation": {
+    "required": true,
+    "method": "voice_otp",
+    "reason": "step up ..." }</span>,
+  "scam": { "score": 12, "tactics": [] },
+  "replay": { "suspect": false },
+  "campaign": { "repeat_voice": true },
+  "action_reason": "synthetic-voice 96 ..."
+}</div>
+      </div>
+      <div><ul>
+        <li><b>Two services, on-prem.</b> The shield (WS + REST, :8000) scores every call; a companion <b>verify service</b> holds the Voice-OTP + 1:1 voiceprint the escalation routes into.</li>
+        <li><b>SIPREC / media-fork in, JSON out.</b> No rip-and-replace &mdash; the same verdict feeds the agent UI <i>and</i> the fraud/decisioning engine.</li>
+        <li><b>Act on <span style="font-family:var(--mono)">action</span> + <span style="font-family:var(--mono)">escalation</span>.</b> BLOCK stops the money; the escalation tells the agent exactly which step-up to run.</li>
+        <li><b>Stateless &amp; horizontal.</b> Prometheus metrics, health probes, API-key/mTLS, append-only audit &mdash; no audio retained.</li>
+      </ul></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>INTEGRATION CONTRACT</span></div>
   </section>
 
   <!-- 25 IMPACT -->
