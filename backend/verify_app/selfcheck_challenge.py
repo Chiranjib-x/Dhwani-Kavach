@@ -22,6 +22,12 @@ def main() -> None:
     assert challenge.digits_from("for to ate") == "428"            # homophones
     assert challenge.digits_from("my code is 8 8 zero one") == "8801"
     assert challenge.digits_from("no numbers here") == ""
+    # Hindi: Devanagari words, Devanagari numerals, romanized -- the digit gate
+    # must read the OTP in the language a rural caller actually speaks it.
+    assert challenge.digits_from("तीन छह छह दो") == "3662"
+    assert challenge.digits_from("मेरा कोड ३ ६ ६ २ है") == "3662"   # Devanagari numerals
+    assert challenge.digits_from("teen chhe chhe do") == "3662"     # romanized Hindi
+    assert challenge.digits_from("do saat aath ek") == "2781"
     assert challenge.edit_distance("472903", "472903") == 0
     assert challenge.edit_distance("472903", "472913") == 1        # one wrong digit
     assert challenge.edit_distance("472903", "47293") == 1         # one dropped digit

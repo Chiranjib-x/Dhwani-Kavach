@@ -1,7 +1,14 @@
-"""Digit ASR via faster-whisper tiny (int8, CPU) — feeds Gate 1.
+"""Digit ASR via faster-whisper (int8, CPU) — feeds Gate 1.
 
-`tiny` is plenty for reading 6 digits and stays ~1-2 s on the free 2-vCPU tier.
-Greedy decode, English, no cross-segment conditioning (each clip is independent).
+`tiny` is fast (~1-2 s on 2 vCPU) but its multilingual accuracy is weak; for a
+Hindi/regional deployment bump KV_WHISPER_SIZE to 'base' or 'small' if tiny
+mishears the digits. Greedy decode, no cross-segment conditioning.
+
+Language is AUTO-DETECTED by default (KV_ASR_LANG unset) so a caller reading the
+OTP in Hindi/regional isn't transcribed as broken English -- the digit parser
+(challenge.digits_from) already understands Hindi digits/words. Pin a language
+via KV_ASR_LANG=hi (etc.) only if a single-language deployment finds auto-detect
+flaky on short digit reads.
 """
 from __future__ import annotations
 
@@ -10,7 +17,8 @@ import os
 import numpy as np
 
 _MODEL = None
-_SIZE = os.environ.get("KV_WHISPER_SIZE", "tiny")   # upgrade knob: 'base' if tiny mishears accents
+_SIZE = os.environ.get("KV_WHISPER_SIZE", "tiny")   # upgrade knob: 'base'/'small' for Hindi/accents
+_LANG = os.environ.get("KV_ASR_LANG", "").strip() or None   # None -> auto-detect (Hindi/regional)
 
 
 def load():
@@ -29,6 +37,6 @@ def transcribe(wav16k: np.ndarray) -> str:
     """Mono float32 @16 kHz -> transcript text (segments joined)."""
     segments, _ = load().transcribe(
         np.ascontiguousarray(wav16k, dtype=np.float32),
-        beam_size=1, language="en",
+        beam_size=1, language=_LANG,
         condition_on_previous_text=False, temperature=0.0)
     return " ".join(s.text for s in segments).strip()
