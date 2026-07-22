@@ -138,30 +138,37 @@ detector isn't: the decision, the deployment, and the intelligence around it.
 
 ---
 
-## 4. Numbers cheat-sheet (put these on slides)
+## 4. Numbers cheat-sheet — ⭐ CANONICAL (put these on slides)
+
+> **This table is the single source of truth for numbers.** Every other doc should
+> match it; if a number changes, change it *here first*, then propagate. Measured
+> via `cd backend && python -m eval.run ../Dataset_orig` on a 122-clip held-out set
+> (61 real / 61 fake — our own voices + commercial clones).
 
 | Metric | Value |
 |---|---|
-| First verdict latency | ~4 s (live), streaming update ~every 2 s |
-| Real-clone set (15 real / 15 fake) | neural **AUC 0.996 · EER ~6.7% clean**; 100% clones flagged |
-| Telephony (same set) | AUC ~**0.62–0.82** — **known weakness, active work** |
+| First verdict latency | ~3 s (upload) / ~4 s (live), streaming update ~every 2 s |
+| **Full ensemble (deployed)** | **99.2% acc · EER 1.6% · AUC 0.999** (122-clip set) |
+| Neural-only (no heuristics) | 95.9% acc · EER 6.6% · AUC 0.989 |
+| Telephony (same set) | ~**20% EER** — **known weakness, channel-robust retrain in progress** |
 | Neural weight / heuristics | 0.90 (two detectors ×0.45) / 0.10 (evidence only) |
-| Detection layers | **2 neural** + 4 heuristic + LLM scam layer |
+| Detection layers | **2 independent neural** + 4 heuristic + LLM scam layer + quality/replay gates |
 | Scam tactics detected | 6 |
-| Voiceprint dim / match threshold | 768-d / 0.85 cosine |
-| Risk bands | GREEN <40 · AMBER 40–69 · RED ≥70 (Platt-calibrated) |
+| Match threshold (voiceprint) | 0.85 cosine |
+| Risk bands | GREEN / AMBER / RED + **UNCERTAIN** (abstain), calibrated thresholds |
 | Audio stored | 0 (verdict + transcript only) |
 | TRL | 5 → 6 |
 
 **The generalization story (tell this — it's your strongest, most credible slide):**
-Our **v1** was a single wav2vec2 that scored ~4% EER on the ASVspoof/Kaggle dev sets.
-Measured on **real** ElevenLabs clones + real voices, it was **near-random (AUC 0.63)** —
+Our **v1** was a single wav2vec2 that scored **< 0.5% EER on its dev set**. Measured on
+**real** commercial clones of our own voices, it was **40% EER / AUC 0.63 — near-random**:
 a textbook out-of-domain generalization failure (cf. Müller et al., Interspeech 2022:
 SSL detectors degrade 200–1000% cross-domain). So we moved to **two independent XLS-R
-detectors + fusion**, which gets **AUC 0.996** on those same real clips. The lesson that
-drives the design: **never trust one detector's leaderboard number.**
-*(Fusion configs measured: neural-only EER ~6.7% clean; hand-weighted ensemble 20% raw
-→ 13% calibrated → 3% with learned fusion. Deploy with calibration + fusion on.)*
+detectors trained on different clone families + calibration**, which reach **99.2% acc /
+AUC 0.999** on a 122-clip held-out set. The lesson that drives the design: **never trust
+one detector's leaderboard number.** *(Honest caveat: 122 clips is small — strong
+evidence, not proof — and our own red-teaming found a generator that partially evades us,
+which feeds the retrain. The loop is the product, not any frozen model.)*
 
 ---
 
@@ -221,27 +228,31 @@ on-prem trust under RBI localisation.
   Indian voices + modern fakes + telephony), deployable Docker + governance.
   **Path to 7–8:** 30-day shadow pilot on a bank queue → calibrate on real traffic →
   harden SIPREC + mTLS.
-- **Done:** core shield (5-layer + scam LLM + fusion + novelty + audit); edge phases
-  (shadow, multilingual, evidence packs, campaigns, governance); telephony retrain deployed.
-- **Next:** customer voice-identity + liveness; embedding-based novelty; broader
-  generator diversity. **Then:** bank PoC.
+- **Done:** dual-detector shield + scam LLM + fusion + novelty + audit; edge phases
+  (shadow, multilingual, evidence packs, campaigns, governance); quality/replay gates;
+  Voice OTP (`/verify`) + live-call demo (`/call`).
+- **In progress:** channel-robust (telephony/replay) retrain. **Next:** customer
+  voice-identity; embedding-based novelty; broader generator diversity. **Then:** bank PoC.
 
 ---
 
 ## 9. Honest limitations (the "viva armor" slide — say these with confidence)
 
-1. **Small eval set (30 clips)** → numbers are directional; a large fixed benchmark is
-   in progress (harness built: `eval/run.py`). No large-corpus ROC yet.
-2. **Telephony is a measured weakness** (AUC ~0.62–0.82 vs 0.996 clean) → channel-robust
-   retraining (`train_robust.py`) is the active fix.
-3. **Out-of-domain real voices false-positive** (studio English — one real clip even
-   scores above its own clone) → needs more diverse real training data (highest-value lever).
-4. **The default hand-weighted ensemble under-performs its own neural core** → deploy with
-   **calibration + learned fusion on** (measured: EER 20% raw → 13% calibrated → 3% fusion).
-5. Thresholds (voiceprint 0.85, calibration, fusion) tuned on thin data → refit at scale.
-6. LLM is a **cloud call** → same Nemotron as an on-prem NIM container (base-URL change).
-7. **Customer voice-identity** (is it *this* customer?) not built yet — anti-spoofing only;
-   **adversarial-evasion** untested.
+1. **Small eval set (122 clips)** → strong evidence, not proof; a larger multi-source
+   benchmark with confidence intervals is the next evaluation step (harness: `eval/run.py`).
+2. **Telephony is a measured weakness** (~20% EER vs 1.6% clean) → channel-robust
+   retraining (`train_robust.py`, telephony/reverb/noise/**speaker-replay** aug) is the
+   active fix; until it lands, degraded input abstains (UNCERTAIN) rather than guessing.
+3. **Out-of-domain real voices false-positive** (a few studio-English clips) → needs more
+   diverse real training data (highest-value lever), not a threshold tweak.
+4. **Own red-teaming found a generator that partially evades us** (KittenTTS: ~5/8 voices
+   slip today) → feeds the retrain. We surface this, don't hide it — the loop is the moat.
+5. Thresholds (voiceprint 0.85, calibration) tuned on thin data → refit at scale.
+6. LLM is a **cloud call** → same model as an on-prem NIM container (base-URL change).
+7. **Customer voice-identity** (is it *this* customer?) is the Voice-OTP layer being built
+   out (`/verify`); **adversarial-evasion** untested.
+8. **Security/scale honesty:** API-key gated (open by default in the demo); per-call state
+   in-process, so multi-replica needs a shared store. mTLS + scale-out on the roadmap.
 
 *Why the heuristics (e.g. phase) are low-weight:* they're cheap, interpretable,
 training-free signals that catch specific synthesis artifacts (phase = vocoders have

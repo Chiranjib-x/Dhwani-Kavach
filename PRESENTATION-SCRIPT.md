@@ -194,8 +194,10 @@ end every technical answer by tying back to the bank's benefit.
 - Read the flow: telephony → SIPREC media-fork → our on-prem container → agent screen
   or fraud engine.
 - Three cards: on-prem and private (no audio leaves, RBI-clean); standard integration
-  (SIPREC + REST/WS); runs like any service (stateless, scales, metrics).
-- "Secured with API-key/mTLS, TLS, audit trail — and again, **no audio retained**."
+  (SIPREC + REST/WS); runs like a service (audit trail, Prometheus metrics).
+- "API-key gated, TLS, full audit trail — and again, **no audio retained**. mTLS
+  and horizontal scale-out are on the hardening roadmap; we're honest that today's
+  build is single-instance."
 
 ### Slide 19 — Governance & trust  [1:15]
 - "Banks don't switch a fraud system to full power on day one. We designed for that."
