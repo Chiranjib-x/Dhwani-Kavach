@@ -12,18 +12,20 @@ detailed docs & diagrams live in the repo. Pull content straight from here into 
 
 | File | What it is |
 |---|---|
-| `presentation.html` | **26-slide deck** (browser, keyboard-nav, print-to-PDF). Start here. |
+| `PPT-CONTEXT.md` | **Start here to build the deck** — shipped-vs-in-flight split, deck spine, canonical numbers. |
+| `presentation.html` | **26-slide deck** (browser, keyboard-nav, print-to-PDF). |
 | `tools/build_pptx.py` | Regenerates the editable **.pptx** (with speaker notes). Run `python tools/build_pptx.py` (close PowerPoint first). |
 | `PRESENTATION-SCRIPT.md` | **40-min slide-by-slide speaking script + Q&A prep.** |
 | `architecture.html` | Static **component/dataflow** diagram (screenshot into a slide). |
 | `orchestration.html` | **Runtime control-flow** diagram (event loop, threads, background LLM). |
+| `THREAT.md` | Voice-spoofing **threat model** — the "exposed without us" slide. |
 | `PRODUCT-EXPLAINER.md` | Plain-language walkthrough of every feature (bank-IT audience). |
 | `TECHNICAL-OVERVIEW.md` | Deep technical description (academic/viva audience). |
 | `COMPETITIVE-EDGE.md` | Where competitors lose + feature strategy. |
 | `INTEGRATION.md` | How it plugs into a bank (SIPREC, API, deployment). |
-| `DEMO-SCRIPT.md` | Live-demo runbook (the 6 beats). |
-| `LEAVE-BEHIND.md` | One-page summary. |
-| `ROADMAP-SHIELD.md` / `ROADMAP-EDGE.md` / `PHASE-H-KAGGLE.md` | Build plans / training runbook. |
+| `DEMO-RUNBOOK.md` / `PRE-DEMO-CHECKLIST.md` | Live-demo rules + verified clips; on-the-day tick list. |
+| `LEAVE-BEHIND.md` | One-page bank-facing summary. |
+| `PHASE-H-KAGGLE.md` | Channel-robust training runbook. (Executed roadmaps archived in `docs/archive/`.) |
 
 > The `.pptx` and the model weights are **not** in git. You have them (sent
 > separately) — drop `w2v2aasist_full.safetensors` **and its paired
