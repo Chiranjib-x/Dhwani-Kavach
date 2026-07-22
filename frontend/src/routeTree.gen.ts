@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VoiceprintRouteImport } from './routes/voiceprint'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as RuralRouteImport } from './routes/rural'
 import { Route as RangeRouteImport } from './routes/range'
 import { Route as CallRouteImport } from './routes/call'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +24,11 @@ const VoiceprintRoute = VoiceprintRouteImport.update({
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RuralRoute = RuralRouteImport.update({
+  id: '/rural',
+  path: '/rural',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RangeRoute = RangeRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
   '/range': typeof RangeRoute
+  '/rural': typeof RuralRoute
   '/verify': typeof VerifyRoute
   '/voiceprint': typeof VoiceprintRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
   '/range': typeof RangeRoute
+  '/rural': typeof RuralRoute
   '/verify': typeof VerifyRoute
   '/voiceprint': typeof VoiceprintRoute
 }
@@ -60,21 +68,30 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
   '/range': typeof RangeRoute
+  '/rural': typeof RuralRoute
   '/verify': typeof VerifyRoute
   '/voiceprint': typeof VoiceprintRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/call' | '/range' | '/verify' | '/voiceprint'
+  fullPaths: '/' | '/call' | '/range' | '/rural' | '/verify' | '/voiceprint'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/call' | '/range' | '/verify' | '/voiceprint'
-  id: '__root__' | '/' | '/call' | '/range' | '/verify' | '/voiceprint'
+  to: '/' | '/call' | '/range' | '/rural' | '/verify' | '/voiceprint'
+  id:
+    | '__root__'
+    | '/'
+    | '/call'
+    | '/range'
+    | '/rural'
+    | '/verify'
+    | '/voiceprint'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallRoute: typeof CallRoute
   RangeRoute: typeof RangeRoute
+  RuralRoute: typeof RuralRoute
   VerifyRoute: typeof VerifyRoute
   VoiceprintRoute: typeof VoiceprintRoute
 }
@@ -93,6 +110,13 @@ declare module '@tanstack/react-router' {
       path: '/verify'
       fullPath: '/verify'
       preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rural': {
+      id: '/rural'
+      path: '/rural'
+      fullPath: '/rural'
+      preLoaderRoute: typeof RuralRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/range': {
@@ -123,6 +147,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallRoute: CallRoute,
   RangeRoute: RangeRoute,
+  RuralRoute: RuralRoute,
   VerifyRoute: VerifyRoute,
   VoiceprintRoute: VoiceprintRoute,
 }

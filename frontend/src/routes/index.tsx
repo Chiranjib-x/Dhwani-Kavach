@@ -300,10 +300,16 @@ function Index() {
               href="#demo" cta="Try detection" delay={0.06}
             />
             <DemoCard
-              tag="STEP-UP" tagColor="#F59E0B"
+              tag="RURAL · ग्रामीण" tagColor="#F59E0B"
+              title="Vernacular scam warning"
+              desc="For villagers who can't read an OTP: the shield hears the coercion in Hindi and speaks a warning back — literacy-free, at the moment of risk. Turn sound on."
+              href="/rural" cta="Hear it" delay={0.12}
+            />
+            <DemoCard
+              tag="STEP-UP" tagColor="#38BDF8"
               title="Voice-OTP"
               desc="A flagged call escalates here: read a fresh one-time code aloud. A recording can't answer it; a clone that does still fails the deepfake + replay checks."
-              href="/verify" cta="Run Voice-OTP" delay={0.12}
+              href="/verify" cta="Run Voice-OTP" delay={0.18}
             />
             <DemoCard
               tag="IDENTITY" tagColor="#22C55E"
