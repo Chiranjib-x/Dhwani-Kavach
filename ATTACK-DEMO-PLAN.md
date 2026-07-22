@@ -66,9 +66,11 @@ Lead here. These are the highest-danger vectors (THREAT.md §Tier 1).
   agent's screen, not in a next-day dispute."*
 
 ### 1C · Human scam-script, NO deepfake (THREAT #3, defeats A2+A3) — the headliner
-- **Scenario:** a real human coerces a genuine customer (or impersonates the bank).
-  The voice is 100% real. **Invisible to every pure-deepfake detector on the
-  market.**
+- **Scenario:** a scammer coaches a genuine customer offline; the customer then
+  **calls the bank** to move the money. We catch it *on that bank call* — the
+  voice is 100% real, so it's **invisible to every pure-deepfake detector**.
+  (Placement: we don't tap the scammer's call to the customer — see THREAT.md
+  "Where the shield sits" — we catch the coerced customer when they reach the bank.)
 - **Stage it:** upload a clip of the coached-transfer script (SHOWCASE §4 / runbook
   §3) — watch APP-FRAUD RISK and the tactic chips.
 - **WITHOUT:** deepfake detection passes (real voice), biometrics pass (it's them) —

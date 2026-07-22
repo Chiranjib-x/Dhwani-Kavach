@@ -13,6 +13,18 @@ abstraction level of a fraud-risk review — not an operational playbook.
 Cheap generative cloning has quietly invalidated A1 and A2; A3 was always
 socially engineerable. That inversion is why this product exists.
 
+## Where the shield sits (read this before the "our layer" column)
+
+Dhwani-Kavach runs on the **bank's own channel** — the contact-centre / IVR /
+agent call, and the customer or agent authenticating to the bank. It scores what
+**reaches the bank**; it does **not** tap a scammer's out-of-band call to a
+customer's personal phone. So for every vector below, "our layer" is where we
+catch it *as it hits the bank's channel*: the clone calling the contact centre,
+the coerced customer reaching the bank to move money, the spoofed number dialling
+in. Catching the scammer's **direct** call to the customer would need a
+telecom-operator or on-device deployment — a larger, different scope, named
+honestly (not claimed here).
+
 ---
 
 ## Tier 1 — highest danger (cheap, scalable, defeats a primary control)
@@ -21,7 +33,7 @@ socially engineerable. That inversion is why this product exists.
 |---|---|---|---|---|---|---|
 | 1 | **Synthetic-voice biometric defeat** | seconds of harvested target audio → cloned sample that matches the enrolled template | A1 | **High** — ~zero cost, repeatable | nothing | dual neural detectors (core case) |
 | 2 | **Agent-assisted transfer via clone** | call the contact centre as the "customer," clone speaking, to authorise a transfer / add payee | A2 | **High**, scales across agents | nothing reliable | real-time RED on the agent screen, mid-call |
-| 3 | **Human scam-script, NO deepfake** | a real human coerces a genuine customer, or impersonates the bank — voice 100% real | A2 + A3 | **Very high** — no tech needed | nothing automated | scam-script LLM (the differentiator no deepfake-only tool has) |
+| 3 | **Human scam-script, NO deepfake** | a real human coerces a genuine customer (who then contacts the bank to move the money) — voice 100% real | A2 + A3 | **Very high** — no tech needed | nothing automated | scam-script LLM, on the bank call the coerced customer makes (the differentiator no deepfake-only tool has) |
 
 **#3 is the single most dangerous vector**: free, high-volume, largest share of
 real vishing loss, and *invisible to every pure-deepfake detector on the market.*
