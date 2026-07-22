@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VoiceprintRouteImport } from './routes/voiceprint'
+import { Route as VoiceTrustRouteImport } from './routes/voice-trust'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as TreasuryRouteImport } from './routes/treasury'
+import { Route as SafeguardingRouteImport } from './routes/safeguarding'
 import { Route as RuralRouteImport } from './routes/rural'
 import { Route as RangeRouteImport } from './routes/range'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MitraRouteImport } from './routes/mitra'
 import { Route as LanguagesRouteImport } from './routes/languages'
+import { Route as HelpdeskRouteImport } from './routes/helpdesk'
+import { Route as ContinuousRouteImport } from './routes/continuous'
 import { Route as CampaignRouteImport } from './routes/campaign'
 import { Route as CallRouteImport } from './routes/call'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,9 +30,24 @@ const VoiceprintRoute = VoiceprintRouteImport.update({
   path: '/voiceprint',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VoiceTrustRoute = VoiceTrustRouteImport.update({
+  id: '/voice-trust',
+  path: '/voice-trust',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TreasuryRoute = TreasuryRouteImport.update({
+  id: '/treasury',
+  path: '/treasury',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SafeguardingRoute = SafeguardingRouteImport.update({
+  id: '/safeguarding',
+  path: '/safeguarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RuralRoute = RuralRouteImport.update({
@@ -39,6 +60,11 @@ const RangeRoute = RangeRouteImport.update({
   path: '/range',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MitraRoute = MitraRouteImport.update({
   id: '/mitra',
   path: '/mitra',
@@ -47,6 +73,16 @@ const MitraRoute = MitraRouteImport.update({
 const LanguagesRoute = LanguagesRouteImport.update({
   id: '/languages',
   path: '/languages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpdeskRoute = HelpdeskRouteImport.update({
+  id: '/helpdesk',
+  path: '/helpdesk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContinuousRoute = ContinuousRouteImport.update({
+  id: '/continuous',
+  path: '/continuous',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignRoute = CampaignRouteImport.update({
@@ -69,22 +105,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
   '/campaign': typeof CampaignRoute
+  '/continuous': typeof ContinuousRoute
+  '/helpdesk': typeof HelpdeskRoute
   '/languages': typeof LanguagesRoute
   '/mitra': typeof MitraRoute
+  '/onboarding': typeof OnboardingRoute
   '/range': typeof RangeRoute
   '/rural': typeof RuralRoute
+  '/safeguarding': typeof SafeguardingRoute
+  '/treasury': typeof TreasuryRoute
   '/verify': typeof VerifyRoute
+  '/voice-trust': typeof VoiceTrustRoute
   '/voiceprint': typeof VoiceprintRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
   '/campaign': typeof CampaignRoute
+  '/continuous': typeof ContinuousRoute
+  '/helpdesk': typeof HelpdeskRoute
   '/languages': typeof LanguagesRoute
   '/mitra': typeof MitraRoute
+  '/onboarding': typeof OnboardingRoute
   '/range': typeof RangeRoute
   '/rural': typeof RuralRoute
+  '/safeguarding': typeof SafeguardingRoute
+  '/treasury': typeof TreasuryRoute
   '/verify': typeof VerifyRoute
+  '/voice-trust': typeof VoiceTrustRoute
   '/voiceprint': typeof VoiceprintRoute
 }
 export interface FileRoutesById {
@@ -92,11 +140,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
   '/campaign': typeof CampaignRoute
+  '/continuous': typeof ContinuousRoute
+  '/helpdesk': typeof HelpdeskRoute
   '/languages': typeof LanguagesRoute
   '/mitra': typeof MitraRoute
+  '/onboarding': typeof OnboardingRoute
   '/range': typeof RangeRoute
   '/rural': typeof RuralRoute
+  '/safeguarding': typeof SafeguardingRoute
+  '/treasury': typeof TreasuryRoute
   '/verify': typeof VerifyRoute
+  '/voice-trust': typeof VoiceTrustRoute
   '/voiceprint': typeof VoiceprintRoute
 }
 export interface FileRouteTypes {
@@ -105,33 +159,51 @@ export interface FileRouteTypes {
     | '/'
     | '/call'
     | '/campaign'
+    | '/continuous'
+    | '/helpdesk'
     | '/languages'
     | '/mitra'
+    | '/onboarding'
     | '/range'
     | '/rural'
+    | '/safeguarding'
+    | '/treasury'
     | '/verify'
+    | '/voice-trust'
     | '/voiceprint'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/call'
     | '/campaign'
+    | '/continuous'
+    | '/helpdesk'
     | '/languages'
     | '/mitra'
+    | '/onboarding'
     | '/range'
     | '/rural'
+    | '/safeguarding'
+    | '/treasury'
     | '/verify'
+    | '/voice-trust'
     | '/voiceprint'
   id:
     | '__root__'
     | '/'
     | '/call'
     | '/campaign'
+    | '/continuous'
+    | '/helpdesk'
     | '/languages'
     | '/mitra'
+    | '/onboarding'
     | '/range'
     | '/rural'
+    | '/safeguarding'
+    | '/treasury'
     | '/verify'
+    | '/voice-trust'
     | '/voiceprint'
   fileRoutesById: FileRoutesById
 }
@@ -139,11 +211,17 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallRoute: typeof CallRoute
   CampaignRoute: typeof CampaignRoute
+  ContinuousRoute: typeof ContinuousRoute
+  HelpdeskRoute: typeof HelpdeskRoute
   LanguagesRoute: typeof LanguagesRoute
   MitraRoute: typeof MitraRoute
+  OnboardingRoute: typeof OnboardingRoute
   RangeRoute: typeof RangeRoute
   RuralRoute: typeof RuralRoute
+  SafeguardingRoute: typeof SafeguardingRoute
+  TreasuryRoute: typeof TreasuryRoute
   VerifyRoute: typeof VerifyRoute
+  VoiceTrustRoute: typeof VoiceTrustRoute
   VoiceprintRoute: typeof VoiceprintRoute
 }
 
@@ -156,11 +234,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VoiceprintRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/voice-trust': {
+      id: '/voice-trust'
+      path: '/voice-trust'
+      fullPath: '/voice-trust'
+      preLoaderRoute: typeof VoiceTrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify': {
       id: '/verify'
       path: '/verify'
       fullPath: '/verify'
       preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/treasury': {
+      id: '/treasury'
+      path: '/treasury'
+      fullPath: '/treasury'
+      preLoaderRoute: typeof TreasuryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/safeguarding': {
+      id: '/safeguarding'
+      path: '/safeguarding'
+      fullPath: '/safeguarding'
+      preLoaderRoute: typeof SafeguardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rural': {
@@ -177,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RangeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mitra': {
       id: '/mitra'
       path: '/mitra'
@@ -189,6 +295,20 @@ declare module '@tanstack/react-router' {
       path: '/languages'
       fullPath: '/languages'
       preLoaderRoute: typeof LanguagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/helpdesk': {
+      id: '/helpdesk'
+      path: '/helpdesk'
+      fullPath: '/helpdesk'
+      preLoaderRoute: typeof HelpdeskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/continuous': {
+      id: '/continuous'
+      path: '/continuous'
+      fullPath: '/continuous'
+      preLoaderRoute: typeof ContinuousRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaign': {
@@ -219,11 +339,17 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallRoute: CallRoute,
   CampaignRoute: CampaignRoute,
+  ContinuousRoute: ContinuousRoute,
+  HelpdeskRoute: HelpdeskRoute,
   LanguagesRoute: LanguagesRoute,
   MitraRoute: MitraRoute,
+  OnboardingRoute: OnboardingRoute,
   RangeRoute: RangeRoute,
   RuralRoute: RuralRoute,
+  SafeguardingRoute: SafeguardingRoute,
+  TreasuryRoute: TreasuryRoute,
   VerifyRoute: VerifyRoute,
+  VoiceTrustRoute: VoiceTrustRoute,
   VoiceprintRoute: VoiceprintRoute,
 }
 export const routeTree = rootRouteImport
