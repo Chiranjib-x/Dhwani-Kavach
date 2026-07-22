@@ -12,10 +12,11 @@ type Scam = { score: number; tactics: string[]; transcript?: string; language?: 
 type Action = "MONITOR" | "CHALLENGE" | "BLOCK"
 type Quality = { ok: boolean; score: number; reason: string; snr_db?: number; rms?: number; clip_frac?: number }
 type Replay = { suspect: boolean; score: number; reason: string }
+type Escalation = { required: boolean; method: "voice_otp" | "human_review" | null; reason: string }
 type Result = {
   risk_score: number; alert_level: AlertLevel; layer_breakdown: Record<string, number>
   quality?: Quality; replay?: Replay
-  novelty?: number; scam?: Scam; action?: Action; action_reason?: string
+  novelty?: number; scam?: Scam; action?: Action; action_reason?: string; escalation?: Escalation
   mode?: "shadow" | "enforce"; enforced?: boolean; call_max?: number
 }
 type WsMsg = Result | { error: string }
@@ -237,6 +238,28 @@ export default function LiveMonitor() {
           {result?.action_reason || "Fuses synthetic-voice, APP-fraud/coercion and transaction context into one decision."}
         </div>
       </div>
+
+      {/* STEP-UP — the flagged call is not a dead end: the verdict routes into
+          active verification. A synthetic/replay flag hands off to the Voice-OTP
+          (dynamic code + 1:1 voiceprint a recording/replay can't complete); a
+          coercion flag routes to a human, because a coached real customer passes
+          every voice check. This is the two apps working as one funnel. */}
+      {result?.escalation?.required && (
+        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          className="mt-4 rounded-xl px-5 py-3 flex flex-wrap items-center gap-3"
+          style={{ border: `1px solid ${C.info}`, backgroundColor: "rgba(56,189,248,0.06)" }}>
+          <span className="font-mono text-[11px] tracking-[0.2em]" style={{ color: C.info }}>
+            {result.escalation.method === "human_review" ? "↳ ROUTE TO HUMAN" : "↳ STEP-UP REQUIRED"}
+          </span>
+          <span className="text-[12px]" style={{ color: C.text }}>{result.escalation.reason}</span>
+          {result.escalation.method === "voice_otp" && (
+            <a href="/verify" className="font-mono text-[11px] ml-auto underline-offset-4 hover:underline"
+              style={{ color: C.cyan }}>
+              Run Voice-OTP ↗
+            </a>
+          )}
+        </motion.div>
+      )}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="font-mono text-[11px] tracking-wider" style={{ color: C.muted }}>
           APP-FRAUD RISK {result?.scam?.score ?? 0}/100
