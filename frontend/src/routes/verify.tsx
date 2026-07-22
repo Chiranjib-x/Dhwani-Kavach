@@ -22,9 +22,34 @@ type Challenge = { challenge_id: string; prompt: string; digits: number[] }
 
 const C = { cyan: "#5EEAD4", ok: "#22C55E", warn: "#F59E0B", threat: "#FF4D6D", text: "#F1F5F9", muted: "#64748B", surface: "#0F1117", faint: "rgba(255,255,255,0.08)" }
 
+// Aural OTP: a non-literate / rural caller can't READ the code off a screen, so
+// the IVR SPEAKS it in Hindi and they repeat it. Digits -> Hindi words (clearer
+// than letting a hi-IN voice read a numeral string).
+const HINDI_DIGIT: Record<string, string> = { "0": "शून्य", "1": "एक", "2": "दो", "3": "तीन", "4": "चार", "5": "पाँच", "6": "छह", "7": "सात", "8": "आठ", "9": "नौ" }
+const hindiWords = (digits: number[]) => digits.map((d) => HINDI_DIGIT[String(d)] ?? String(d)).join(" · ")
+
+function speakDigits(digits: number[], lead = true): Promise<void> {
+  return new Promise((resolve) => {
+    if (!("speechSynthesis" in window)) return resolve()
+    const synth = window.speechSynthesis
+    synth.cancel()
+    const spoken = (lead ? "कृपया ये अंक बोलिए। " : "") + digits.map((d) => HINDI_DIGIT[String(d)] ?? String(d)).join(", ")
+    const u = new SpeechSynthesisUtterance(spoken)
+    u.lang = "hi-IN"
+    const hi = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith("hi"))
+    if (hi) u.voice = hi
+    u.rate = 0.8
+    u.onend = () => resolve()
+    u.onerror = () => resolve()
+    synth.speak(u)
+    // fallback: if there's no Hindi voice, onend never fires -> don't hang the flow
+    setTimeout(resolve, 7000)
+  })
+}
+
 function VerifyDemo() {
   const [challenge, setChallenge] = useState<Challenge | null>(null)
-  const [phase, setPhase] = useState<"idle" | "recording" | "checking" | "done">("idle")
+  const [phase, setPhase] = useState<"idle" | "prompting" | "recording" | "checking" | "done">("idle")
   const [result, setResult] = useState<VerifyResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(0)
@@ -36,6 +61,10 @@ function VerifyDemo() {
       const ch: Challenge = await (await fetch(`${BACKEND}/api/challenge`)).json()
       setChallenge(ch)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Turn-taking: SPEAK the code first (mic open but not recording), so the
+      // spoken prompt isn't captured into the answer. Then record.
+      setPhase("prompting")
+      await speakDigits(ch.digits)
       const rec = new MediaRecorder(stream)
       recRef.current = rec
       const chunks: Blob[] = []
@@ -74,18 +103,31 @@ function VerifyDemo() {
         <h1 className="mt-3 text-3xl font-semibold">Speak-to-authenticate, deepfake-proof</h1>
         <p className="mt-2 text-sm" style={{ color: C.muted }}>
           Fresh digits every attempt — a recording can't answer them. A cloned voice that
-          answers correctly still fails the synthetic-voice check. Two gates, one step.
+          answers correctly still fails the synthetic-voice check. Two gates, one step —
+          and the code is <b style={{ color: C.text }}>spoken aloud (Hindi)</b>, so a caller who can't read still uses it.
         </p>
       </div>
 
       <div className="w-full max-w-xl rounded-2xl p-8" style={{ backgroundColor: C.surface, border: `1px solid ${C.faint}` }}>
-        {phase === "recording" && challenge ? (
+        {phase === "prompting" && challenge ? (
+          <div className="text-center">
+            <div className="font-mono text-[11px] tracking-[0.2em] animate-pulse" style={{ color: C.warn }}>🔊 सुनिए · SPEAKING THE CODE…</div>
+            <div className="mt-4 text-sm" style={{ color: C.muted }}>The system is reading the code aloud — listen, then repeat it.</div>
+            <div className="mt-3 font-mono text-5xl font-bold tracking-[0.3em]" style={{ color: C.cyan }}>{challenge.digits.join(" ")}</div>
+            <div className="mt-2 text-lg" style={{ color: C.text }}>{hindiWords(challenge.digits)}</div>
+          </div>
+        ) : phase === "recording" && challenge ? (
           <div className="text-center">
             <div className="font-mono text-[11px] tracking-[0.2em]" style={{ color: C.threat }}>● RECORDING · {countdown}s</div>
-            <div className="mt-4 text-sm" style={{ color: C.muted }}>Say these digits, clearly:</div>
+            <div className="mt-4 text-sm" style={{ color: C.muted }}>Say these digits, clearly · ये अंक बोलिए:</div>
             <div className="mt-2 font-mono text-5xl font-bold tracking-[0.3em]" style={{ color: C.cyan }}>
               {challenge.digits.join(" ")}
             </div>
+            <div className="mt-2 text-lg" style={{ color: C.text }}>{hindiWords(challenge.digits)}</div>
+            <button onClick={() => speakDigits(challenge.digits, false)}
+              className="mt-4 font-mono text-[12px] underline-offset-4 hover:underline" style={{ color: C.warn }}>
+              🔊 दोबारा सुनें · hear again
+            </button>
           </div>
         ) : phase === "checking" ? (
           <div className="text-center font-mono text-sm animate-pulse" style={{ color: C.cyan }}>
@@ -111,12 +153,12 @@ function VerifyDemo() {
           </div>
         ) : (
           <div className="text-center text-sm" style={{ color: C.muted }}>
-            Press start — you'll get 4 digits to read back within {RECORD_MS / 1000} seconds.
+            Press start — the code is <b style={{ color: C.text }}>spoken aloud in Hindi</b>, then you read it back. No screen-reading needed.
           </div>
         )}
       </div>
 
-      <button onClick={start} disabled={phase === "recording" || phase === "checking"}
+      <button onClick={start} disabled={phase === "prompting" || phase === "recording" || phase === "checking"}
         className="rounded-full px-8 py-3 text-sm font-medium transition-colors disabled:opacity-40"
         style={{ border: `1px solid ${C.cyan}`, color: C.cyan }}>
         {phase === "done" ? "Try again" : "Start verification"}

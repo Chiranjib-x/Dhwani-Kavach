@@ -53,32 +53,41 @@ most-demoable rural feature.
   from `/api/analyze`; deliver via the IVR's regional-language TTS (or Bhashini,
   below) instead of the browser.
 
-### 2. Business-Correspondent voiceprint + impersonation detection
+### 2. Business-Correspondent voiceprint + impersonation detection — **DEMO BUILT (`/mitra`)**
 Enroll every Bank Mitra's voiceprint (ECAPA — already built in `verify_app`).
-Detect when "the Mitra" on a call is a clone/impostor, and keep an audit trail of
-every BC-assisted transaction. A rural-specific use case that barely exists for
-urban banking. **Reuses the voiceprint tier; needs a BC-enrollment flow + a
-"known-agent" check.**
+Detect when "the Mitra" on a call is a clone/impostor. The BC *is* the bank to a
+village, so an impersonated/cloned agent is a direct fraud node the customer can't
+check. **Demo (`routes/mitra.tsx`):** three cases — genuine Mitra (VERIFIED),
+stranger (voice mismatch → REJECTED), and AI clone (partly passes the 1:1
+voiceprint but the synthetic-voice check catches it → REJECTED) — which shows
+*why* both checks are needed. Reuses the real ECAPA engine (`/voiceprint`).
 
-### 3. Aural Voice-OTP via IVR TTS
-Deliver the fresh challenge digits *by voice* in the local language; the customer
-repeats them. Digit parser already multilingual — this is a delivery change
-(regional TTS on the challenge), not new detection.
+### 3. Aural Voice-OTP via IVR TTS — **BUILT (in `/verify`)**
+The challenge digits are now **spoken aloud in Hindi** before recording (proper
+turn-taking so the prompt isn't captured), with a "hear again" replay — so a
+non-literate caller can use the OTP without reading. `routes/verify.tsx`; digit
+words mapped to Devanagari, Web Speech API (offline).
 
-### 4. DBT / government-scheme scam tactics
-Add scheme-impersonation (PM-Kisan, MGNREGA, pension, "account seeding") as an
-explicit tactic in the APP-fraud prompt so the model names the rural scam pattern.
+### 4. DBT / government-scheme scam tactics — **BUILT (backend prompt)**
+`ml/scam_detector.py` `scam_narrative`/`high_risk_intent` now explicitly name the
+rural patterns: a stuck pension/DBT/PM-Kisan/MGNREGA payment needing
+'re-KYC'/Aadhaar-seeding/OTP, "account will be blocked" KYC threats, utility-
+disconnection threats, and OTP/PIN sharing or AePS biometric withdrawals.
 
-### 5. Bhashini / AI4Bharat language adapter
-India's national language-tech mission (22 languages + dialects). Plug STT/TTS
-into Bhashini to cover tribal/low-resource languages Whisper struggles with —
-closes the language gap *and* gives a bank/government a "built on national DPI"
-story. Backend already supports an STT swap (`KV_ASR_LANG`, `KV_WHISPER_SIZE`).
+### 5. Bhashini / AI4Bharat language adapter — **DEMO BUILT (`/languages`)**
+India's national language-tech mission (22 languages + dialects) covers the
+tribal/low-resource languages Whisper struggles with. **Demo
+(`routes/languages.tsx`):** the two honest layers (deepfake = language-agnostic;
+coercion = Whisper-native + Bhashini), a spoken Hindi warning, and a coverage grid
+by endonym (native vs Bhashini). Backend is already STT-swappable (`KV_ASR_LANG`,
+`KV_WHISPER_SIZE`); the adapter drops in without touching the detectors.
 
-### 6. District-level campaign alerting
-Point the existing voiceprint-correlation at a region: when one ring sweeps a
-district, proactively warn every targeted number and blocklist the voice —
-protecting people who'd never report themselves.
+### 6. District-level campaign alerting — **DEMO BUILT (`/campaign`)**
+Point the existing voiceprint-correlation at a region: when one voice sweeps a
+district, blocklist it and **proactively warn** the customers it hasn't reached
+yet. **Demo (`routes/campaign.tsx`):** a fraud voice sweeping Rampur block across
+villages, with "protect the district" firing a blocklist + a warning wave to the
+still-at-risk — community protection where the individual never reports.
 
 ---
 

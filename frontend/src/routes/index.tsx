@@ -306,6 +306,24 @@ function Index() {
               href="/rural" cta="Hear it" delay={0.12}
             />
             <DemoCard
+              tag="RURAL · बैंक मित्र" tagColor="#F59E0B"
+              title="Bank Mitra verification"
+              desc="In a branchless village the Business Correspondent IS the bank. Voiceprint the Mitra — a stranger fails, an AI clone is caught by the deepfake check."
+              href="/mitra" cta="Verify a Mitra" delay={0.18}
+            />
+            <DemoCard
+              tag="RURAL · भाषा" tagColor="#F59E0B"
+              title="Language reach"
+              desc="Deepfake detection is language-agnostic; the coercion layer covers major languages via Whisper and tribal dialects via a Bhashini / AI4Bharat adapter."
+              href="/languages" cta="See coverage" delay={0.24}
+            />
+            <DemoCard
+              tag="RURAL · ज़िला" tagColor="#F59E0B"
+              title="District campaign alert"
+              desc="Villagers rarely report — so one fraud voice sweeping a district is caught as a ring, blocklisted, and the customers it hasn't reached are warned proactively."
+              href="/campaign" cta="See the sweep" delay={0.3}
+            />
+            <DemoCard
               tag="STEP-UP" tagColor="#38BDF8"
               title="Voice-OTP"
               desc="A flagged call escalates here: read a fresh one-time code aloud. A recording can't answer it; a clone that does still fails the deepfake + replay checks."

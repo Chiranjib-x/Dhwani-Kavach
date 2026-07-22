@@ -13,6 +13,9 @@ import { Route as VoiceprintRouteImport } from './routes/voiceprint'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as RuralRouteImport } from './routes/rural'
 import { Route as RangeRouteImport } from './routes/range'
+import { Route as MitraRouteImport } from './routes/mitra'
+import { Route as LanguagesRouteImport } from './routes/languages'
+import { Route as CampaignRouteImport } from './routes/campaign'
 import { Route as CallRouteImport } from './routes/call'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +39,21 @@ const RangeRoute = RangeRouteImport.update({
   path: '/range',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MitraRoute = MitraRouteImport.update({
+  id: '/mitra',
+  path: '/mitra',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LanguagesRoute = LanguagesRouteImport.update({
+  id: '/languages',
+  path: '/languages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CampaignRoute = CampaignRouteImport.update({
+  id: '/campaign',
+  path: '/campaign',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CallRoute = CallRouteImport.update({
   id: '/call',
   path: '/call',
@@ -50,6 +68,9 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
+  '/campaign': typeof CampaignRoute
+  '/languages': typeof LanguagesRoute
+  '/mitra': typeof MitraRoute
   '/range': typeof RangeRoute
   '/rural': typeof RuralRoute
   '/verify': typeof VerifyRoute
@@ -58,6 +79,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/call': typeof CallRoute
+  '/campaign': typeof CampaignRoute
+  '/languages': typeof LanguagesRoute
+  '/mitra': typeof MitraRoute
   '/range': typeof RangeRoute
   '/rural': typeof RuralRoute
   '/verify': typeof VerifyRoute
@@ -67,6 +91,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/call': typeof CallRoute
+  '/campaign': typeof CampaignRoute
+  '/languages': typeof LanguagesRoute
+  '/mitra': typeof MitraRoute
   '/range': typeof RangeRoute
   '/rural': typeof RuralRoute
   '/verify': typeof VerifyRoute
@@ -74,13 +101,34 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/call' | '/range' | '/rural' | '/verify' | '/voiceprint'
+  fullPaths:
+    | '/'
+    | '/call'
+    | '/campaign'
+    | '/languages'
+    | '/mitra'
+    | '/range'
+    | '/rural'
+    | '/verify'
+    | '/voiceprint'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/call' | '/range' | '/rural' | '/verify' | '/voiceprint'
+  to:
+    | '/'
+    | '/call'
+    | '/campaign'
+    | '/languages'
+    | '/mitra'
+    | '/range'
+    | '/rural'
+    | '/verify'
+    | '/voiceprint'
   id:
     | '__root__'
     | '/'
     | '/call'
+    | '/campaign'
+    | '/languages'
+    | '/mitra'
     | '/range'
     | '/rural'
     | '/verify'
@@ -90,6 +138,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CallRoute: typeof CallRoute
+  CampaignRoute: typeof CampaignRoute
+  LanguagesRoute: typeof LanguagesRoute
+  MitraRoute: typeof MitraRoute
   RangeRoute: typeof RangeRoute
   RuralRoute: typeof RuralRoute
   VerifyRoute: typeof VerifyRoute
@@ -126,6 +177,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RangeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mitra': {
+      id: '/mitra'
+      path: '/mitra'
+      fullPath: '/mitra'
+      preLoaderRoute: typeof MitraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/languages': {
+      id: '/languages'
+      path: '/languages'
+      fullPath: '/languages'
+      preLoaderRoute: typeof LanguagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/campaign': {
+      id: '/campaign'
+      path: '/campaign'
+      fullPath: '/campaign'
+      preLoaderRoute: typeof CampaignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/call': {
       id: '/call'
       path: '/call'
@@ -146,6 +218,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CallRoute: CallRoute,
+  CampaignRoute: CampaignRoute,
+  LanguagesRoute: LanguagesRoute,
+  MitraRoute: MitraRoute,
   RangeRoute: RangeRoute,
   RuralRoute: RuralRoute,
   VerifyRoute: VerifyRoute,
