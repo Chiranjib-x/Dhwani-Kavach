@@ -78,31 +78,36 @@ end every technical answer by tying back to the bank's benefit.
 - → "Now the deep dive — starting with the voice engine."
 
 ### Slide 8 — ★ Detection layers  [1:30]
-- "The voice engine is five layers that vote. Walk the table."
-- "The neural model carries 80% of the weight — it's the learned deepfake detector.
-  The other four are handcrafted acoustic checks: spectral biometrics, breath
-  patterns, phase coherence, liveness — cheap signal that supports the model."
-- "We take a weighted ensemble to a 0–100 score, banded green/amber/red."
+- "The voice engine is led by **two independent neural detectors** — both built on
+  XLS-R, a multilingual self-supervised speech encoder, but trained on *different*
+  clone families, so they fail differently and cross-check each other. Together they
+  carry 90% of the vote."
+- "The four handcrafted acoustic checks — spectral biometrics, breath patterns,
+  phase coherence, liveness — are shown as **evidence**, near-zero weight. We
+  measured them; they don't separate modern fakes, so we don't pretend they do."
+- "Ensemble → 0–100 score, banded green/amber/red — thresholds fit on labelled
+  data, not hand-picked."
 - "**Worst-window drives the verdict** — a deepfake anywhere in the call is a
-  deepfake. And we gate out silence so we never score noise."
-- → "The interesting part is that neural model, and how we trained it."
+  deepfake. A VAD gates out silence so we never score noise."
+- → "Why two detectors? That's the most important lesson we learned."
 
-### Slide 9 — ★ Model & training journey  [2:00]  (slow down — panel loves this)
-- "The model is **wav2vec2**, a self-supervised speech encoder, with a small
-  classifier head. Self-supervised pretraining on huge unlabelled speech is *why* it
-  generalises where a from-scratch CNN doesn't."
-- "But the story that matters is the **training journey** — each row here fixed a
-  real failure we hit."
-- CNN baseline looked great at 2.75%, but **9.75% on unseen attacks** — it overfit.
-- Moved to wav2vec2 — 0.4% — but it **false-flagged real human voices**, a domain gap.
-- Added **real Hindi voices** — 0.13%, and it stopped flagging genuine callers.
-- Added modern in-the-wild fakes **and our own clones** — that's a realistic ~5% on
-  hard modern fakes.
-- Finally added **telephony augmentation** — the deployed model: **4% clean, 6% on
-  phone lines**.
-- "**Be honest here:** these EERs are on different dev sets, so they're not directly
-  comparable — each measures the fix for that step, not one fixed benchmark. A single
-  telephony-inclusive benchmark is our next evaluation step."
+### Slide 9 — ★ Model & the generalization lesson  [2:00]  (slow down — panel loves this)
+- "Our first model — a fine-tuned wav2vec2 — looked excellent on its dev set,
+  under half a percent error. Then we tested it on **real commercial voice clones**
+  of our own voices: **40% EER, AUC 0.63.** Barely better than a coin flip."
+- "That's the dirty secret of this field: **benchmark accuracy does not transfer.**
+  Published detectors routinely degrade 200 to 1000 percent across datasets. Any
+  team quoting one dev-set number is telling you very little."
+- "The fix wasn't a bigger model — it was **two independent detectors trained on
+  different data**, so their failure modes anti-correlate, plus calibration fit on
+  our own labelled corpus."
+- "The measured result, on a **122-clip held-out set of our own voices and
+  commercial clones: 99.2% accuracy, EER 1.6%, AUC 0.999** — reproducible with
+  one command in the repo, `python -m eval.run`."
+- "**Honest caveat:** 122 clips is a small corpus. We treat these as strong
+  evidence, not gospel — and our own red-teaming already found an open-source
+  generator that partially evades us. That finding feeds the retrain pipeline;
+  the loop is the product, not any frozen model."
 - → "That covers the clone. Now the human scammer."
 
 ### Slide 10 — ★ Scam-script + multilingual  [1:30]
@@ -138,13 +143,19 @@ end every technical answer by tying back to the bank's benefit.
   It's a data advantage that compounds with use."
 - → "One more deep dive — the thing that makes or breaks a real deployment."
 
-### Slide 13 — Telephony robustness  [1:15]
-- "Real calls aren't studio audio — they're 8 kHz, band-limited, G.711 codec, lossy.
-  Most detectors are demoed on a clean laptop mic and **collapse** on a real line."
-- "We degrade our training audio to phone quality, so the model *learns* telephony.
-  Result: 4% clean versus 6% on phone lines — a two-point gap where an un-augmented
-  model shows a cliff."
-- "We'll prove it live — a clone through an 8 kHz phone filter still reads red."
+### Slide 13 — Telephony & hostile channels  [1:15]  (honest: in progress)
+- "Real calls aren't studio audio — 8 kHz, band-limited, G.711, lossy. Most
+  detectors collapse there, and we'll be straight: **so does ours today** — our
+  telephony EER is roughly 20%, versus near-zero clean. We measured it; we're not
+  hiding it."
+- "Two answers. First, a **channel-robust retrain** is literally running — training
+  data degraded through telephony, room reverb, noise, and speaker-replay channels,
+  gated so it can't regress clean accuracy."
+- "Second — and this ships today — **the system knows when it can't judge.** A
+  degraded input reads UNCERTAIN, never a confident all-clear. And a clone played
+  from a loudspeaker trips a **replay-channel gate**: either the model catches the
+  synthesis, or the channel gate catches the replay. It never silently trusts a
+  speaker playback."
 - → "So, what makes us different — summarised."
 
 ### Slide 14 — Uniqueness  [1:00]
@@ -154,9 +165,11 @@ end every technical answer by tying back to the bank's benefit.
 
 ### Slide 15 — Benchmarks  [1:30]
 - "Let's be rigorous and honest about where we stand."
-- "Academic models like AASIST beat us on the ASVspoof leaderboard — around 1%, and
-  we're at 0.13% on that dev set. **But** — and this is documented — they generalise
-  poorly across datasets; on in-the-wild fakes they degrade to 20–40%."
+- "Academic models top the ASVspoof leaderboard at around 1% EER. **But** — and
+  this is documented in the literature — they generalise poorly across datasets:
+  on in-the-wild fakes they degrade to 20–40%. We evaluate where it matters:
+  **on our own held-out voices and real commercial clones — 99.2% accuracy,
+  EER 1.6%** — not on the leaderboard's easy axis."
 - Walk the differentiator rows: telephony, human-scam, on-prem, governance, campaigns
   — where academic and even commercial tools are blank or limited, we're a check.
 - "Our point: **accuracy on a benchmark is table-stakes. We optimise for the real
@@ -206,24 +219,31 @@ end every technical answer by tying back to the bank's benefit.
 
 ## PART 2 — LIVE DEMO (≈8 min)  [Slide 21]
 
-Follow `DEMO-SCRIPT.md`. Say each line, then act.
+Follow **DEMO-RUNBOOK.md** (verified clips + channel rules — never play a clone
+out loud into the mic; upload it or use `/call`). Say each line, then act.
 
-1. **Real voice → GREEN.** Speak ~5s. "That's me, live — green, no false alarm."
-2. **Clone → RED.** Play your ElevenLabs clone. "Cloned voice — red, in ~4 seconds,
-   mid-call, before money moves."
+1. **Real voice → GREEN.** Speak ~5s into the mic (live mic is fine for a *real*
+   voice). "That's me, live — green, no false alarm."
+2. **Clone → RED.** **Upload** a verified clone from the runbook list (risk ≥ 90).
+   "Cloned voice — red in seconds, flagged inside the 10-second budget — see the
+   timer — before money moves."
 3. **Scam script in your real voice → tactics + escalation.** Read the scam line.
-   "My real voice, no deepfake — every deepfake-only tool says safe; ours catches the
-   *scam*."
-4. **Phone-line clone → still RED.** Play `clone_phone.wav`. "Same clone through an
-   8 kHz phone codec — still caught. This is the thing that kills laptop-mic demos."
+   "My real voice, no deepfake — every deepfake-only tool says safe; ours catches
+   the *scam*."
+4. **Voice OTP (`/verify`) — the strongest 30 seconds.** Show a pass with your live
+   voice, then explain the measured attack: "a synthetic voice that answers the
+   digits *correctly* still gets rejected — right answer, wrong speaker type."
 5. **(Optional) Hindi scam** → tactics still fire.
-6. **Backend product pages** — open `/cases` → click a call → evidence pack; `/campaigns`
-   → same voice, many calls; `/governance` → TPR/FPR, drift, registry. "This is a bank
-   product, not a toy."
-7. **(Optional) Shadow toggle** — flip it: "pilot mode… and one click to enforce."
+6. **(Optional) `/call` two-tab demo** — "this is the digital tap a real telephony
+   integration gives us — no over-the-air loophole."
+7. **Backend product pages** — `/cases` → evidence pack; `/campaigns` → same voice,
+   many calls; `/governance` → TPR/FPR, drift, registry. "A bank product, not a toy."
+8. **(Optional) Shadow toggle** — flip it: "pilot mode… and one click to enforce."
 
 Fallbacks to know: internet down → scam layer neutral, voice detection still works.
-Don't demo KittenTTS-generated audio (the deployed model hasn't trained on it yet).
+If a judge insists on playing a clone from a speaker: the replay gate forces
+CHALLENGE — narrate it as the feature it is. Don't demo KittenTTS audio as the
+headline (it's the red-team story, 5/8 voices evade today).
 
 → "So where are we on readiness?"
 

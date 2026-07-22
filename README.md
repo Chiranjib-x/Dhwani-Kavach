@@ -1,21 +1,40 @@
 # Dhwani-Kavach
 
-Real-time AI audio forensics system for detecting deepfake voices on live banking calls.
+Real-time call-fraud shield for banks — detects AI voice clones **and** human
+scam scripts on live calls, on-prem, with a decision (MONITOR / CHALLENGE /
+BLOCK) in ~4 seconds.
 
 ## Architecture
 
-5-layer ML pipeline (the trained neural model carries the verdict; layers 2–5 are supporting heuristics):
-1. **wav2vec2 (SSL) neural detector** — fine-tuned on ASVspoof + real Indian voices + modern fakes (~5% EER on modern deepfakes). Falls back to a spectrogram CNN, then AASIST, if its weights are absent.
-2. Handcrafted MFCC/spectral features
-3. Breath pattern detection
-4. Phase coherence analysis
-5. Liveness challenge
+Two **independent neural deepfake detectors** lead the verdict; heuristics are
+corroborating evidence; parallel layers read the *content* and the *channel*:
 
-> The wav2vec2 weights (`backend/models/deepfake_w2v.pt`, ~360 MB) are git-ignored — keep them locally. Without them the pipeline gracefully falls back to the committed CNN.
+| Layer | What it does |
+|---|---|
+| `detector_v2` — XLS-R + W2VAASIST head | primary neural detector (channel-robust fine-tune) |
+| `detector_v3` — clone specialist | independent second detector, different training data — failure modes anti-correlate |
+| 4 acoustic heuristics (MFCC / breath / phase / liveness) | evidence display, near-zero weight (measured) |
+| Input-quality gate | too quiet/noisy/clipped → **UNCERTAIN**, never a false all-clear |
+| Replay-channel gate | loudspeaker→air→mic injection detected → forced CHALLENGE |
+| Scam-script layer | Whisper STT → LLM tactic analysis (urgency, OTP asks, threats…) — catches *human* scammers, multilingual |
+| Decision fusion | rule-based MONITOR/CHALLENGE/BLOCK with transaction context |
+| Voice OTP (`/verify`) | speak-back challenge: ASR content match + deepfake check, parallel verification path |
 
-## Quick Start
+**Measured** (122-clip held-out set, own voices + commercial clones, reproducible
+via `cd backend && python -m eval.run ../Dataset_orig`): **99.2% accuracy · EER
+1.6% · AUC 0.999** clean; telephony is the known gap (~20% EER, channel-robust
+retrain in progress).
 
-**One-click (Windows):** double-click `start-demo.bat` — it launches the backend + frontend and opens the dashboard.
+> **A fresh clone has no working model.** `backend/models/w2v2aasist_full.safetensors`
+> (~306 MB) and its paired `calibration.json` are gitignored — get them from the
+> team or retrain (see [PHASE-H-KAGGLE.md](PHASE-H-KAGGLE.md)). Without them the
+> detector falls back to a weaker committed head. The scam layer needs
+> `NVIDIA_API_KEY` set, else it returns neutral.
+
+## Quick start
+
+**One-click (Windows):** `start-fresh.bat` — kills stale processes, starts
+backend + frontend, opens the dashboard.
 
 Manual:
 
@@ -28,23 +47,18 @@ python -m uvicorn app.main:app --app-dir backend --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-## Phase Roadmap
+**Demo surfaces:** live monitor + file upload (`/`), WebRTC live-call demo
+(`/call`), Voice OTP (`/verify`), and the bank product pages —
+`:8000/cases` (evidence packs) · `/campaigns` (fraud-ring view) ·
+`/governance` (TPR/FPR, drift, registry) · `/metrics` (Prometheus).
 
-Full plan: https://vishalvivek2007.github.io/Dhvani-kavach-plan/ (9 phases, 38 steps).
-Status legend: ✅ done · ⚠️ partial · ❌ not started.
+## Key documents
 
-| Phase | Scope | Status |
-|---|---|---|
-| **0** Foundation | Monorepo scaffold, deps, AASIST weights, Docker skeleton | ✅ |
-| **1A** Spectrogram pipeline | Audio I/O, mel-spectrogram, handcrafted features | ✅ |
-| **1B** Detection layers | AASIST + MFCC, breath, phase-coherence, liveness | ✅ |
-| **1C** Ensemble | Weighted vote, GREEN/AMBER/RED banding (Redis pub/sub pending) | ⚠️ |
-| **2A** FastAPI backend | `/health`, `POST /api/analyze`, `GET /api/challenge`, `ws /ws/analyze` | ✅ |
-| **2B** Streaming pipeline | Backend 10s sliding-window detection over `ws /ws/analyze` ✅ (currently unused by the UI; Redis fan-out + liveness-WS pending) | ⚠️ |
-| **3A** Dashboard core | Risk gauge + file-upload analysis UI (Vite). A live-WebSocket streaming dashboard was built then **intentionally replaced** by this simpler UI | ⚠️ |
-| **3B** Dashboard polish | Per-layer breakdown shown; live mic capture + alert history removed in the UI simplification; scenario switcher not built | ⚠️ |
-| **4** Docker + demo | Production Docker, demo audio pack, smoke test, perf validation | ❌ |
-
-> **Note:** the frontend was deliberately simplified to a Vite file-upload UI (`POST /api/analyze`). The streaming backend (`ws /ws/analyze`) stays available for a future live dashboard but is not currently wired to the UI.
-
-See [`HANDOFF.md`](HANDOFF.md) for full status, function reference, and open decisions.
+| Doc | Purpose |
+|---|---|
+| [HANDOFF.md](HANDOFF.md) | current technical state — start here to develop |
+| [DEMO-RUNBOOK.md](DEMO-RUNBOOK.md) | stage rules: verified clips, channel discipline |
+| [PRE-DEMO-CHECKLIST.md](PRE-DEMO-CHECKLIST.md) | T-1 day / T-30 min tick list |
+| [FINALS-DECK-BRIEF.md](FINALS-DECK-BRIEF.md) | the measured numbers (single source of truth) |
+| [INTEGRATION.md](INTEGRATION.md) | how it drops into a bank (SIPREC, on-prem) |
+| [PHASE-H-KAGGLE.md](PHASE-H-KAGGLE.md) | channel-robust retrain pipeline |

@@ -50,12 +50,17 @@ Two ways calls come in: **live streaming** (WebSocket, for in-progress calls) an
 
 ### A. Voice deepfake detection (the core)
 - **What:** decides if the *voice itself* is AI-generated.
-- **How:** five layers vote. The lead layer is a **wav2vec2 neural model**
-  (self-supervised speech AI) fine-tuned on global spoof datasets + real Indian
-  voices + modern clones. Four supporting heuristics (spectral biometrics, breath
-  patterns, phase coherence, liveness) add signal. A weighted ensemble produces a
-  0–100 score, banded **GREEN (<40) / AMBER (40–69) / RED (≥70)**.
-- **Accuracy:** ~**4% EER on clean audio, 6% on phone-line audio** for modern fakes.
+- **How:** **two independent neural detectors** (XLS-R self-supervised speech AI,
+  trained on *different* clone families so they fail differently) cross-check every
+  window and carry the verdict. Four supporting heuristics (spectral biometrics,
+  breath patterns, phase coherence, liveness) are shown as corroborating evidence.
+  A calibrated ensemble produces a 0–100 score banded **GREEN / AMBER / RED**, plus
+  **UNCERTAIN** when the input is too degraded to judge honestly.
+- **Accuracy (measured, reproducible):** **99.2% accuracy / EER 1.6% / AUC 0.999**
+  on a 122-clip held-out set of our own voices + commercial clones
+  (`python -m eval.run`). Telephony-degraded audio is the known gap (~20% EER) —
+  a channel-robust retrain is in progress, and until it lands, degraded input
+  abstains rather than guessing.
 - **Why the bank cares:** this is the actual anti-clone defence OTP/biometrics lack —
   and it's tuned on Indian voices so it doesn't false-flag genuine customers.
 

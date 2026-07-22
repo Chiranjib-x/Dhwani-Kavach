@@ -25,9 +25,10 @@ detailed docs & diagrams live in the repo. Pull content straight from here into 
 | `LEAVE-BEHIND.md` | One-page summary. |
 | `ROADMAP-SHIELD.md` / `ROADMAP-EDGE.md` / `PHASE-H-KAGGLE.md` | Build plans / training runbook. |
 
-> The `.pptx` and the 360 MB model are **not** in git. You have the model (sent
-> separately) — drop it at `backend/models/deepfake_w2v.pt`. Regenerate the .pptx
-> with the builder.
+> The `.pptx` and the model weights are **not** in git. You have them (sent
+> separately) — drop `w2v2aasist_full.safetensors` **and its paired
+> `calibration.json`** into `backend/models/` (they must travel together).
+> Regenerate the .pptx with the builder.
 
 ---
 
@@ -280,7 +281,7 @@ adversarial, why trust a student prototype…) with crisp, honest answers.
 pip install -r backend/requirements.txt
 pip install faster-whisper           # optional: scam-script STT
 cd frontend && npm install
-# place deepfake_w2v.pt in backend/models/ ; set NVIDIA_API_KEY
+# place w2v2aasist_full.safetensors + calibration.json in backend/models/ ; set NVIDIA_API_KEY
 ```
-Then `start-demo.bat` → dashboard at http://localhost:8080; backend pages at
+Then `start-fresh.bat` → dashboard at http://localhost:8080; backend pages at
 http://localhost:8000/cases · /campaigns · /governance · /metrics.

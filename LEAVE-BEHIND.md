@@ -16,12 +16,12 @@ stop a convincing clone or a coerced genuine customer.
 
 | | Capability | What it means for you |
 |---|---|---|
-| 🎙️ | **Deepfake voice detection** | Catches AI voice clones. ~4% error clean / 6% on phone lines. |
+| 🎙️ | **Deepfake voice detection** | Two independent neural detectors cross-check every window — 99.2% accuracy / EER 1.6% measured on our own held-out voices + commercial clones. |
 | 💬 | **Scam-script detection** | Flags human scammers (urgency, "don't tell anyone", OTP asks) — the fraud deepfake-only tools miss. |
 | ⚖️ | **Decision + context** | Weighs the transaction (amount, new payee) → a proportionate action, not just a score. |
 | 🆕 | **Zero-day / novelty** | Flags clone tools it has never seen — doesn't go stale. |
 | 🕸️ | **Campaign detection** | "The same synthetic voice hit 14 customers" — fraud-ring intelligence that compounds with use. |
-| ☎️ | **Telephony-grade** | Works on your real 8 kHz phone lines, not just clean mics. |
+| ☎️ | **Channel-aware** | Degraded input reads UNCERTAIN (never a false all-clear); loudspeaker-replay injection is detected and challenged. Full telephony-grade retrain in progress. |
 | 🇮🇳 | **Multilingual** | Hindi, Hinglish, regional languages out of the box. |
 | 🔭 | **Shadow mode** | Pilot risk-free: log only for 30 days, then flip to enforce. |
 | 📑 | **Audit & evidence packs** | Defensible per-call record for disputes/regulators — **no audio stored**. |
@@ -40,8 +40,8 @@ stop a convincing clone or a coerced genuine customer.
 ### How it fits in
 On-prem **Docker** container in your DMZ. Integrates via a standard **SIPREC /
 media-fork** from your existing telephony (Genesys/Avaya/Cisco) → verdict to the
-agent screen or your fraud-decisioning engine. **No rip-and-replace.** API-key /
-mTLS secured. Scales horizontally; CPU-viable.
+agent screen or your fraud-decisioning engine. **No rip-and-replace.** API-key
+gated today; mTLS and horizontal scale-out on the hardening roadmap. CPU-viable.
 
 ---
 
