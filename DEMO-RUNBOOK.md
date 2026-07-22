@@ -1,8 +1,28 @@
 # Demo Runbook — finals stage checklist
 
-Everything on this page is **measured, not assumed** (2026-07-21, model
-`w2v2aasist-cotrain+clone_v3`, calibration refit on the 122-clip Dataset_orig +
-sample_audio set: 99.2% acc, EER 1.6%, AUC 0.999, verdict p50 ~2.9 s).
+Everything on this page is **measured, not assumed**. Original measurement:
+2026-07-21, model `w2v2aasist-cotrain+clone_v3`, calibration refit on the
+122-clip Dataset_orig + sample_audio set: 99.2% acc, EER 1.6%, AUC 0.999,
+verdict p50 ~2.9 s. **Re-verified 2026-07-22**: every clip named below still
+scores exactly as documented — zero drift on this cohort.
+
+Since that measurement, `Dataset_orig` grew by 40 clips (81+81 today, was
+61+61): 20 loudspeaker-replay recordings (`*_speaker_N.mp3`, a genuinely harder
+channel condition) and 20 new real voices (`v1..v20.mp3`). Running the full
+162-clip set through `eval.run` reports a lower aggregate (EER 8.6%, AUC 0.984)
+— that is **not a regression of the demoed model**; it's these two new, harder
+cohorts diluting the number. Full honest breakdown:
+
+- **Original 122-clip cohort (this doc's demo material): unchanged, 99.2%/1.6%/0.999.**
+- **Loudspeaker-replay cohort (20 new fakes):** 14/20 RED, 3/20 AMBER, 3/20
+  GREEN — misses are all one voice (Glenn). On these *real* replay recordings
+  (not the synthetic sim `ml/replay.py`'s self-check uses) the replay-channel
+  gate does not add extra catch either — scores sit at 67-69, just under the
+  suspect threshold. Disclosable gap, and exactly what the pending channel-robust
+  retrain (worst-channel AUC 0.469→0.844, awaiting local A/B) targets.
+- **New real-voice cohort (20 clips, v1-v20):** 0 false blocks (no RED), 7/20
+  AMBER (step-up review, not a wrongful block), 13/20 clean GREEN.
+
 If you change the model or `calibration.json`, re-verify every clip below with
 `cd backend && python -m eval.run ../Dataset_orig` before trusting this list again.
 
