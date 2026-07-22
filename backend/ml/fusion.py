@@ -64,7 +64,7 @@ def fuse(
     if voice_red:
         reasons.append(f"synthetic-voice risk {deepfake_risk}")
     if scam_red:
-        reasons.append(f"scam-script risk {scam_score}")
+        reasons.append(f"APP-fraud/coercion risk {scam_score}")
 
     threat = voice_red or scam_red
 

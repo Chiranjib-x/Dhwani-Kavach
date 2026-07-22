@@ -33,25 +33,46 @@ _BASE_URL = os.environ.get("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/
 _MODEL = os.environ.get("NVIDIA_MODEL", "meta/llama-3.1-8b-instruct")
 _KEY = os.environ.get("NVIDIA_API_KEY", "")
 
+# The system sits on the CONTACT-CENTRE call: a bank agent talking to a customer.
+# The agent is legitimate, so classic scammer tactics (OTP asks, threats) rarely
+# appear. What DOES appear is Authorized-Push-Payment fraud -- the REAL customer,
+# in their REAL voice, authorising a transfer because a scammer is manipulating
+# them in real time. Voice biometrics pass (it's them), deepfake detection passes
+# (real voice) -- the conversation is the only signal, and that's what we read.
 _TACTICS = [
-    "urgency", "authority_impersonation", "isolation",
-    "new_beneficiary", "sensitive_info_request", "threat",
+    "coaching",            # customer being fed answers by a third party (live control)
+    "duress",              # fear/reluctance/confusion -- acting under pressure
+    "scam_narrative",      # "safe account", police/RBI order, crypto/investment windfall, romance
+    "agent_pressure",      # caller pushing the AGENT to skip steps / hurry
+    "high_risk_intent",    # large transfer, brand-new payee, "move everything", access/SIM reset
+    "third_party_benefit", # money going to someone the customer just met / was told to pay
 ]
 
 _SYSTEM = (
-    "You are a bank fraud analyst. Given a phone-call transcript, rate how likely "
-    "it is a social-engineering / vishing scam from 0 to 100, and list ONLY the "
-    "tactics with EXPLICIT evidence in the transcript. Do not infer or guess a "
-    "tactic that is not actually said. Tactic definitions:\n"
-    "- urgency: pressure to act immediately / time limit / 'right now'.\n"
-    "- authority_impersonation: claims to be bank/police/govt/official.\n"
-    "- isolation: tells the person not to tell anyone / stay on the line.\n"
-    "- new_beneficiary: asks to transfer/send money to a new or unknown account.\n"
-    "- sensitive_info_request: explicitly asks for OTP, PIN, password, CVV, or card number.\n"
-    "- threat: threatens account freeze, arrest, penalty, or loss.\n"
-    "Include a tactic only if its definition is clearly met by the words in the "
-    'transcript. Reply with STRICT JSON only: {"score": <int 0-100>, "tactics": [<strings>]}. '
-    "No prose."
+    "You are a bank fraud analyst listening to a call between a BANK AGENT and a "
+    "CUSTOMER. The agent is legitimate. Your job is to detect Authorized Push "
+    "Payment (APP) fraud and social engineering -- a genuine customer being "
+    "manipulated or coerced (often by a third party in real time) into "
+    "authorising a transfer or account change. Rate 0-100 how likely this call is "
+    "APP fraud / a coached or coerced customer, and list ONLY the signals with "
+    "EXPLICIT evidence in the transcript. Do not infer signals that are not there. "
+    "Signal definitions:\n"
+    "- coaching: the customer is being fed answers / repeating phrases / pausing to "
+    "consult someone / a background voice directs them.\n"
+    "- duress: the customer sounds fearful, reluctant, confused, or says they were "
+    "told they must act right now or face loss.\n"
+    "- scam_narrative: mentions a 'safe/secure account', a police/RBI/government/tax "
+    "instruction, a crypto or investment windfall, or a new online-only acquaintance.\n"
+    "- agent_pressure: the caller pushes the AGENT to bypass verification, hurry, or "
+    "make an exception.\n"
+    "- high_risk_intent: the customer wants a large transfer, a brand-new payee, to "
+    "'move everything', or an access/card/SIM reset.\n"
+    "- third_party_benefit: the money or benefit goes to someone the customer just "
+    "met, was instructed to pay, or does not personally know.\n"
+    "A normal balance enquiry or a routine known-payee payment is NOT fraud -- score "
+    "it low. Include a signal only if its definition is clearly met by the words in "
+    'the transcript. Reply with STRICT JSON only: {"score": <int 0-100>, "tactics": '
+    "[<strings>]}. No prose."
 )
 
 # --- transcription (optional) ------------------------------------------------
