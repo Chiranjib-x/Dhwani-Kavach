@@ -25,6 +25,7 @@ class AnalysisResult(BaseModel):
     scam: dict = {}
     action: str = "MONITOR"
     action_reason: str = ""
+    escalation: dict = {}
     call_id: str = ""
     mode: str = "enforce"
     enforced: bool = True

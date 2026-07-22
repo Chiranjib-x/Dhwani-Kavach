@@ -15,6 +15,23 @@ from ml.scoring import thresholds as _score_thresholds
 _HIGH_VALUE = 50_000  # ₹; tune to the bank's risk appetite
 
 
+def _escalation(action: str, coercion: bool) -> dict:
+    """What the flagged call should escalate INTO — this is what makes the shield
+    a funnel, not a dead end. A verdict of CHALLENGE/BLOCK hands off to the voice
+    step-up (the verify app: dynamic spoken-digit code + 1:1 voiceprint), EXCEPT
+    when the driver is coercion/APP-fraud: a genuine but coached customer passes
+    every voice check, so a second voice gate is theatre — route them to a human."""
+    if action == "MONITOR":
+        return {"required": False, "method": None, "reason": ""}
+    if coercion:
+        return {"required": True, "method": "human_review",
+                "reason": "possible coerced customer — voice auth can't clear this; "
+                          "route to a human agent + cooling-off before the money moves"}
+    return {"required": True, "method": "voice_otp",
+            "reason": "step up with a live spoken-digit voice-OTP (fresh code + 1:1 "
+                      "voiceprint) — a recording or loudspeaker replay can't complete it"}
+
+
 def fuse(
     deepfake_risk: int,
     scam_score: int = 0,
@@ -43,6 +60,7 @@ def fuse(
     Returns {action, action_reason}.
     """
     txn = txn or {}
+    coercion = scam_score >= 70
     # When the input is too degraded to judge the voice, we CANNOT clear the call
     # (a laundered deepfake reads unreliable, not clean) and we must NOT block on a
     # score we don't trust. The honest action is to step up authentication.
@@ -50,14 +68,15 @@ def fuse(
         reason = quality_reason or "input quality too low to assess the voice"
         return {"action": "CHALLENGE",
                 "action_reason": f"{reason} — verify the caller another way",
-                "novelty": novelty}
+                "novelty": novelty,
+                "escalation": _escalation("CHALLENGE", coercion)}
     high_value = bool(txn.get("new_beneficiary")) or float(txn.get("amount", 0) or 0) >= _HIGH_VALUE
 
     # deepfake_risk's RED threshold must match ml.detector's alert_level banding --
     # otherwise a RED badge with a MONITOR action (or vice versa) reads as broken.
     _, voice_red_threshold = _score_thresholds()
     voice_red = deepfake_risk >= voice_red_threshold
-    scam_red = scam_score >= 70
+    scam_red = coercion
     novel = novelty >= 0.6
 
     reasons = []
@@ -94,4 +113,26 @@ def fuse(
         else:
             reason += " (loudspeaker replay suspected)"
 
-    return {"action": action, "action_reason": reason, "novelty": novelty}
+    return {"action": action, "action_reason": reason, "novelty": novelty,
+            "escalation": _escalation(action, scam_red)}
+
+
+if __name__ == "__main__":
+    # Self-check the escalation routing — the integration's load-bearing branch:
+    # a clean call doesn't escalate; a synthetic/replay flag routes to voice-OTP;
+    # a coercion flag routes to a human (a coached real customer beats voice auth).
+    clean = fuse(deepfake_risk=5, scam_score=0)
+    assert clean["action"] == "MONITOR" and not clean["escalation"]["required"]
+
+    synthetic = fuse(deepfake_risk=95, scam_score=0)
+    assert synthetic["action"] == "CHALLENGE"
+    assert synthetic["escalation"]["method"] == "voice_otp"
+
+    coerced = fuse(deepfake_risk=5, scam_score=90, txn={"new_beneficiary": True})
+    assert coerced["action"] == "BLOCK"  # coercion + new payee
+    assert coerced["escalation"]["method"] == "human_review"
+
+    replayed = fuse(deepfake_risk=5, scam_score=0, replay_suspect=True)
+    assert replayed["action"] == "CHALLENGE"  # replay gate forces step-up
+    assert replayed["escalation"]["method"] == "voice_otp"
+    print("fusion escalation self-check ok")

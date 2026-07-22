@@ -33,6 +33,7 @@ export default function LiveDemo() {
     score: number; verdict: Verdict; layers: number[];
     action?: Action; actionReason?: string; scam?: { score: number; tactics: string[] }; novelty?: number;
     campaign?: { repeat_voice?: boolean; cluster_size?: number; blocklist_hit?: boolean };
+    escalation?: { required: boolean; method: "voice_otp" | "human_review" | null; reason: string };
   } | null>(null);
 
   async function handleFile(f: File | null) {
@@ -87,6 +88,7 @@ export default function LiveDemo() {
         scam: data.scam,
         novelty: data.novelty,
         campaign: data.campaign,
+        escalation: data.escalation,
       });
   
       setPhase("done");
@@ -244,6 +246,22 @@ export default function LiveDemo() {
                   NOVELTY {Math.round((result.novelty ?? 0) * 100)}%{(result.novelty ?? 0) >= 0.6 ? " · unknown" : ""}
                 </span>
               </div>
+
+              {/* step-up: a flagged call routes into active verification, not a dead end */}
+              {result.escalation?.required && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg px-4 py-2.5"
+                  style={{ border: "1px solid #38BDF8", backgroundColor: "rgba(56,189,248,0.06)" }}>
+                  <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: "#38BDF8" }}>
+                    {result.escalation.method === "human_review" ? "↳ ROUTE TO HUMAN" : "↳ STEP-UP"}
+                  </span>
+                  <span className="text-[12px]" style={{ color: "#94A3B8" }}>{result.escalation.reason}</span>
+                  {result.escalation.method === "voice_otp" && (
+                    <a href="/verify" className="font-mono text-[11px] ml-auto underline-offset-4 hover:underline" style={{ color: "#5EEAD4" }}>
+                      Run Voice-OTP ↗
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="mt-8 space-y-3">

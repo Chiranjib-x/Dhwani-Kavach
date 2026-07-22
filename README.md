@@ -17,8 +17,9 @@ corroborating evidence; parallel layers read the *content* and the *channel*:
 | Input-quality gate | too quiet/noisy/clipped → **UNCERTAIN**, never a false all-clear |
 | Replay-channel gate | loudspeaker→air→mic injection detected → forced CHALLENGE |
 | Scam-script layer | Whisper STT → LLM tactic analysis (urgency, OTP asks, threats…) — catches *human* scammers, multilingual |
-| Decision fusion | rule-based MONITOR/CHALLENGE/BLOCK with transaction context |
-| Voice OTP (`/verify`) | speak-back challenge: ASR content match + deepfake check, parallel verification path |
+| Decision fusion | rule-based MONITOR/CHALLENGE/BLOCK with transaction context; a flagged call carries an **escalation** directive (step-up voice-OTP, or human review when the customer is real-but-coerced) |
+| Voice OTP (`/verify`) | speak-back challenge the escalation routes into: fresh-digit ASR content match + deepfake check + replay gate. A recording/replay can't complete it |
+| 1:1 voiceprint (`verify_app/`) | ECAPA speaker-identity verification the step-up can hand off to — enroll once → verify by reading digits ([MASTER-PLAN.md](MASTER-PLAN.md)) |
 
 **Measured** (122-clip held-out set, own voices + commercial clones, reproducible
 via `cd backend && python -m eval.run ../Dataset_orig`): **99.2% accuracy · EER
@@ -58,6 +59,8 @@ cd frontend && npm install && npm run dev
 |---|---|
 | [HANDOFF.md](HANDOFF.md) | current technical state — start here to develop |
 | [DEMO-RUNBOOK.md](DEMO-RUNBOOK.md) | stage rules: verified clips, channel discipline |
+| [DEMO-SHOWCASE.md](DEMO-SHOWCASE.md) | layer-by-layer live walkthrough (all features, in story order) |
+| [ATTACK-DEMO-PLAN.md](ATTACK-DEMO-PLAN.md) | phase-wise THREAT.md attacks, staged with vs without the shield |
 | [PRE-DEMO-CHECKLIST.md](PRE-DEMO-CHECKLIST.md) | T-1 day / T-30 min tick list |
 | [FINALS-DECK-BRIEF.md](FINALS-DECK-BRIEF.md) | the measured numbers (single source of truth) |
 | [INTEGRATION.md](INTEGRATION.md) | how it drops into a bank (SIPREC, on-prem) |
