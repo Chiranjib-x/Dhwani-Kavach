@@ -99,7 +99,9 @@ clone → suspect, score 95, CHALLENGE.
 ## Station 4 — The content layer (APP-fraud / coerced customer)
 
 The differentiator no deepfake-only tool has. **The voice is 100% real** — a
-genuine customer being coached/coerced in real time.
+genuine customer, coached by a scammer offline, now **on the phone with the bank**
+to move the money. That bank call is where we read the coercion (we don't tap the
+scammer's call to them — see the placement note in THREAT.md).
 
 **Surface:** upload a clip whose *words* are a coached-transfer script; watch the
 **APP-FRAUD RISK n/100** meter and the tactic chips.

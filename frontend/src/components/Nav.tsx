@@ -20,6 +20,7 @@ export default function Nav() {
           <a href="#defense" className="hover:text-[#F1F5F9] transition-colors">Defense</a>
           <a href="#demos" className="hover:text-[#F1F5F9] transition-colors">Demos</a>
           <a href="/range" style={{ color: "#5EEAD4" }} className="transition-colors">Attack Range</a>
+          <a href="/rural" style={{ color: "#F59E0B" }} className="transition-colors">ग्रामीण Rural</a>
           <a href="/verify" className="hover:text-[#F1F5F9] transition-colors">Voice OTP</a>
           <a href="/voiceprint" className="hover:text-[#F1F5F9] transition-colors">Voiceprint</a>
         </div>
