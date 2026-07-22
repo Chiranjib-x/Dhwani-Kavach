@@ -29,8 +29,8 @@ const levelColor = (l?: AlertLevel) => (l === "RED" ? C.threat : l === "AMBER" ?
 const bandColor = (score: number) => (score >= 70 ? C.threat : score >= 40 ? C.warn : C.ok)
 const actionColor = (a?: Action) => (a === "BLOCK" ? C.threat : a === "CHALLENGE" ? C.warn : C.ok)
 const TACTIC_LABEL: Record<string, string> = {
-  urgency: "Urgency", authority_impersonation: "Authority impersonation", isolation: "Isolation",
-  new_beneficiary: "New beneficiary", sensitive_info_request: "Asking for OTP/PIN", threat: "Threat / coercion",
+  coaching: "Being coached", duress: "Under duress", scam_narrative: "Scam narrative",
+  agent_pressure: "Pressuring agent", high_risk_intent: "High-risk request", third_party_benefit: "Pays a stranger",
 }
 
 function topLayer(b: Record<string, number>): string {
@@ -234,12 +234,12 @@ export default function LiveMonitor() {
           )}
         </div>
         <div className="text-[12px]" style={{ color: C.muted }}>
-          {result?.action_reason || "Fuses synthetic-voice, scam-script and transaction context into one decision."}
+          {result?.action_reason || "Fuses synthetic-voice, APP-fraud/coercion and transaction context into one decision."}
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="font-mono text-[11px] tracking-wider" style={{ color: C.muted }}>
-          SCAM-SCRIPT {result?.scam?.score ?? 0}/100
+          APP-FRAUD RISK {result?.scam?.score ?? 0}/100
         </span>
         {result?.scam?.language && (
           <span className="font-mono text-[10px] uppercase rounded px-1.5 py-0.5" style={{ border: `1px solid ${C.faint}`, color: C.muted }}>
@@ -252,7 +252,7 @@ export default function LiveMonitor() {
           </span>
         ))}
         {!result?.scam?.tactics?.length && (
-          <span className="text-[11px]" style={{ color: C.muted }}>no social-engineering tactics detected</span>
+          <span className="text-[11px]" style={{ color: C.muted }}>no coercion / APP-fraud signals detected</span>
         )}
         {result?.replay?.suspect && (
           <span className="rounded-full px-3 py-1 text-[11px]" title={result.replay.reason}
