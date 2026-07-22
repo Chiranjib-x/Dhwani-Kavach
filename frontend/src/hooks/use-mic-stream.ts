@@ -11,8 +11,12 @@ export function useMicStream(onFrame: (frame: ArrayBuffer) => void) {
   cb.current = onFrame
   const acRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const procRef = useRef<ScriptProcessorNode | null>(null)
 
   const start = useCallback(async (): Promise<AnalyserNode> => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Microphone unavailable — the page must be served over HTTPS or from localhost.")
+    }
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false },
     })
@@ -21,6 +25,12 @@ export function useMicStream(onFrame: (frame: ArrayBuffer) => void) {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ac = new AC({ sampleRate: TARGET_SR }) // browser resamples the mic to 16 kHz
     acRef.current = ac
+    // getUserMedia's permission prompt is async, so by the time we get here the
+    // click's user-activation window can have expired -- some browsers then create
+    // the context SUSPENDED. If that happens onaudioprocess never fires: no error,
+    // no frames, no verdicts -- looks exactly like "the mic isn't working" with
+    // nothing in the console. Force it running before wiring the graph.
+    if (ac.state !== "running") await ac.resume()
 
     const src = ac.createMediaStreamSource(stream)
     const analyser = ac.createAnalyser()
@@ -28,6 +38,7 @@ export function useMicStream(onFrame: (frame: ArrayBuffer) => void) {
     // ponytail: ScriptProcessor is deprecated but a one-liner for raw PCM;
     // swap to an AudioWorklet only if a browser actually drops it.
     const proc = ac.createScriptProcessor(4096, 1, 1)
+    procRef.current = proc  // keep a strong ref -- belt-and-suspenders against GC
     proc.onaudioprocess = (e) => cb.current(e.inputBuffer.getChannelData(0).slice().buffer)
 
     src.connect(analyser)
@@ -38,9 +49,11 @@ export function useMicStream(onFrame: (frame: ArrayBuffer) => void) {
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
+    if (procRef.current) { procRef.current.disconnect(); procRef.current.onaudioprocess = null }
     acRef.current?.close().catch(() => {})
     streamRef.current = null
     acRef.current = null
+    procRef.current = null
   }, [])
 
   return { start, stop }

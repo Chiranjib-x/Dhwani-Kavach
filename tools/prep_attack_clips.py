@@ -15,8 +15,12 @@ from __future__ import annotations
 import argparse
 import os
 import subprocess
+import sys
 
 import imageio_ffmpeg
+import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "frontend", "public", "attacks")
@@ -26,6 +30,29 @@ _DEF_NORMAL = os.path.join(ROOT, "Dataset_orig", "real", "aditya_10.m4a.mp3")   
 
 def _ff(args: list[str]) -> None:
     subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-v", "error", "-y", *args], check=True)
+
+
+def _make_replay(src_mp3: str, out_mp3: str) -> None:
+    """Simulate a loudspeaker replay so it actually trips ml.replay's LF+HF
+    deficit check -- ffmpeg's default highpass/lowpass are gentle single-pole
+    filters and leave enough energy in the 60-160 Hz band to read as a live
+    voice (verified: LF ratio 0.12, floor is 0.05 -- doesn't trigger). Use the
+    same steep 4th-order Butterworth bandpass ml/replay.py's own self-check
+    uses, via scipy, so the demo clip matches the detector's actual test."""
+    from ml.audio_utils import load_audio
+    from scipy.signal import butter, sosfilt
+    import soundfile as sf
+
+    x, sr = load_audio(src_mp3, sr=16000)
+    sos = butter(4, [250, 4200], btype="bandpass", fs=sr, output="sos")
+    y = sosfilt(sos, x).astype(np.float32)
+    peak = np.abs(y).max()
+    if peak > 0:
+        y = y / peak * 0.9
+    wav_tmp = out_mp3 + ".tmp.wav"
+    sf.write(wav_tmp, y, sr, subtype="PCM_16")
+    _ff(["-i", wav_tmp, "-c:a", "libmp3lame", "-b:a", "128k", out_mp3])
+    os.remove(wav_tmp)
 
 
 def main() -> None:
@@ -41,12 +68,19 @@ def main() -> None:
     # clone attack (RED) + genuine control (GREEN)
     _ff(["-i", a.clone, "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(OUT, "clone.mp3")])
     _ff(["-i", a.normal, "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(OUT, "normal.mp3")])
-    # loudspeaker replay: band-limit (kills sub-220 Hz and >3.3 kHz) + room echo,
-    # the LF/HF channel signature a real near-field voice never has.
-    _ff(["-i", a.clone, "-af", "highpass=f=220,lowpass=f=3300,aecho=0.8:0.6:35:0.4,volume=1.2",
-         "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(OUT, "replay.mp3")])
+    # loudspeaker replay: steep bandpass -> triggers ml.replay's suspect flag
+    _make_replay(a.clone, os.path.join(OUT, "replay.mp3"))
 
     print("built:", ", ".join(sorted(os.listdir(OUT))), "->", OUT)
+
+    # verify the replay clip actually trips the detector it's meant to demo
+    os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+    from ml.audio_utils import load_audio as _load
+    from ml import replay as _replay
+    wav, sr = _load(os.path.join(OUT, "replay.mp3"))
+    r = _replay.assess(wav, sr)
+    status = "OK — suspect=True" if r["suspect"] else "WARNING — suspect=False, demo chip will not fire!"
+    print(f"replay.mp3 self-check: {status}  (lf={r['lf_ratio']} hf={r['hf_ratio']} score={r['score']})")
 
 
 if __name__ == "__main__":
