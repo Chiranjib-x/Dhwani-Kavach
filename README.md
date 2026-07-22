@@ -61,6 +61,7 @@ cd frontend && npm install && npm run dev
 | [DEMO-RUNBOOK.md](DEMO-RUNBOOK.md) | stage rules: verified clips, channel discipline |
 | [DEMO-SHOWCASE.md](DEMO-SHOWCASE.md) | layer-by-layer live walkthrough (all features, in story order) |
 | [ATTACK-DEMO-PLAN.md](ATTACK-DEMO-PLAN.md) | phase-wise THREAT.md attacks, staged with vs without the shield |
+| [ATTACK-RANGE-RUNBOOK.md](ATTACK-RANGE-RUNBOOK.md) | how to run the `/range` mock-bank demo live (sequence, narration, fallbacks) |
 | [PRE-DEMO-CHECKLIST.md](PRE-DEMO-CHECKLIST.md) | T-1 day / T-30 min tick list |
 | [FINALS-DECK-BRIEF.md](FINALS-DECK-BRIEF.md) | the measured numbers (single source of truth) |
 | [INTEGRATION.md](INTEGRATION.md) | how it drops into a bank (SIPREC, on-prem) |

@@ -8,22 +8,57 @@ can 1:1-verify a customer where the old CM could not.
 from __future__ import annotations
 
 import os
+import pathlib
+import shutil
 
 import numpy as np
 import torch
 
 _MODEL = None
+_REPO = "speechbrain/spkrec-ecapa-voxceleb"
 _CACHE = os.environ.get(
     "ECAPA_DIR", os.path.join(os.path.dirname(__file__), ".cache", "ecapa"))
+
+_symlink_patched = False
+
+
+def _patch_symlink_fallback() -> None:
+    """Make a denied symlink fall back to a copy. Idempotent, process-wide.
+
+    speechbrain collects the ECAPA checkpoints into savedir by SYMLINKing from
+    the HF cache, and from_hparams gives no way to turn that off (its
+    local_strategy isn't forwarded to the checkpoint-collection step). On Windows
+    a symlink needs Developer Mode / admin, so the first load dies with WinError
+    1314 for anyone without it -- including the demo box. We wrap
+    pathlib.Path.symlink_to so a failed symlink becomes shutil.copy. It only
+    changes behaviour when a symlink would have FAILED (strictly safer), and never
+    triggers on Linux/macOS where the symlink succeeds.
+    ponytail: a syscall shim beats making every operator flip a Windows security
+    setting; drop it if speechbrain ever forwards a copy strategy to collect_files.
+    """
+    global _symlink_patched
+    if _symlink_patched:
+        return
+    _orig = pathlib.Path.symlink_to
+
+    def _symlink_or_copy(self, target, target_is_directory=False):
+        try:
+            return _orig(self, target, target_is_directory)
+        except OSError:
+            shutil.copy(str(target), str(self))
+
+    pathlib.Path.symlink_to = _symlink_or_copy
+    _symlink_patched = True
 
 
 def load():
     """Load (and on first run download, ~80 MB) the ECAPA encoder. Idempotent."""
     global _MODEL
     if _MODEL is None:
+        _patch_symlink_fallback()
         from speechbrain.inference.speaker import EncoderClassifier
         _MODEL = EncoderClassifier.from_hparams(
-            source="speechbrain/spkrec-ecapa-voxceleb",
+            source=_REPO,
             savedir=_CACHE,
             run_opts={"device": "cpu"},
         )

@@ -9,6 +9,8 @@ import RiskGauge from "@/components/RiskGauge";
 
 const HeroShield = lazy(() => import("@/components/HeroShield"));
 
+const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -20,11 +22,12 @@ export const Route = createFileRoute("/")({
 });
 
 const LAYERS = [
-  { n: "01", name: "Dual Neural Core", desc: "Two independent XLS-R detectors trained on different clone families cross-check every window" },
-  { n: "02", name: "Spectral Biometrics", desc: "MFCC, jitter, shimmer the vocal tract can't fake" },
-  { n: "03", name: "Breath Pattern", desc: "Real speech breathes irregularly. Synthesis doesn't." },
-  { n: "04", name: "Phase Coherence", desc: "Every synthesis model leaves phase seams in the math" },
-  { n: "05", name: "Active Liveness", desc: "A live challenge only a present human can answer" },
+  { n: "01", name: "Dual Neural Core", desc: "Two independent XLS-R detectors, trained on different clone families, cross-check every window — their blind spots don't overlap" },
+  { n: "02", name: "Acoustic Corroboration", desc: "MFCC, breath rhythm, phase coherence and liveness back the verdict — evidence the neural core can point to" },
+  { n: "03", name: "APP-Fraud & Coercion", desc: "Reads the conversation, not just the voice — a real customer being coached or coerced in real time, invisible to any deepfake detector" },
+  { n: "04", name: "Replay-Channel Gate", desc: "A clone played through a loudspeaker smears its own artifacts — so we catch the channel instead, and never trust a speaker playback" },
+  { n: "05", name: "Input-Quality Abstention", desc: "Too quiet, clipped or noisy to judge? It says UNCERTAIN instead of a false all-clear" },
+  { n: "06", name: "Decision → Step-Up", desc: "Fuses everything into MONITOR / CHALLENGE / BLOCK, then escalates a flagged call into voice-OTP, a 1:1 voiceprint, or a human" },
 ];
 
 const THREATS = [
@@ -37,11 +40,11 @@ const THREATS = [
 // the neural detector drives the verdict; the acoustic signals are corroborating
 // evidence, so they read lower and don't dominate.
 const DASHBOARD_LAYERS = [
-  { name: "Neural detector", v: 96 },
-  { name: "Spectral Biometrics", v: 43 },
-  { name: "Breath Pattern", v: 38 },
-  { name: "Phase Coherence", v: 51 },
-  { name: "Active Liveness", v: 88 },
+  { name: "Neural core", v: 96 },
+  { name: "Acoustic evidence", v: 43 },
+  { name: "APP-fraud / coercion", v: 24 },
+  { name: "Replay channel", v: 9 },
+  { name: "Active liveness", v: 88 },
 ];
 
 function Index() {
@@ -76,8 +79,9 @@ function Index() {
           >
             Your customer's voice. Verified in real time.
           </h1>
-          <p className="mt-6 mx-auto" style={{ color: "#64748B", fontSize: "1.1rem", maxWidth: 540, lineHeight: 1.5 }}>
-            Dhwani Kavach detects AI-cloned voices on live banking calls — before the fraud happens.
+          <p className="mt-6 mx-auto" style={{ color: "#64748B", fontSize: "1.1rem", maxWidth: 560, lineHeight: 1.5 }}>
+            Dhwani Kavach flags AI-cloned voices <span style={{ color: "#94A3B8" }}>and coached, coerced customers</span> on
+            live banking calls — then steps the call up to a voice-OTP or a human, before the money moves.
           </p>
           <div className="mt-10">
             <a
@@ -207,7 +211,7 @@ function Index() {
 
           <Reveal delay={0.2}>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              {["~95% on modern fakes", "real-time · 2s updates", "5 detection layers", "explainable verdicts"].map((s) => (
+              {["99.2% acc · EER 1.6% · AUC 0.999", "real-time · 2s updates", "dual neural + content + channel", "explainable verdicts"].map((s) => (
                 <div key={s} className="px-4 py-2 rounded-full font-mono text-[11px]"
                   style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.07)", color: "#64748B" }}
                 >
@@ -261,6 +265,68 @@ function Index() {
         </div>
       </section>
 
+      {/* DEMOS HUB — every live surface in one place, integration-forward */}
+      <section id="demos" className="px-6 py-32 md:py-40">
+        <div className="max-w-6xl mx-auto">
+          <Reveal>
+            <h2 className="font-bold tracking-tight text-center" style={{ color: "#F1F5F9", fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+              Live demos. One integration.
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="mt-4 text-center mx-auto" style={{ color: "#64748B", fontSize: "1rem", maxWidth: 620 }}>
+              The same on-prem engine, tapped at every point a bank would wire it in — a SIPREC
+              media-fork on the live call, a step-up voice-OTP, a 1:1 voiceprint, and the fraud console.
+            </p>
+          </Reveal>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            <DemoCard
+              tag="ATTACK RANGE" tagColor="#5EEAD4" featured
+              title="Mock bank vs. attacker"
+              desc="Launch a THREAT.md attack at a mock bank, then flip the shield ON/OFF. Off: the money leaves. On: caught and escalated. The A/B that sells it."
+              href="/range" cta="Open the range" delay={0}
+            />
+            <DemoCard
+              tag="INTEGRATION" tagColor="#38BDF8"
+              title="Live Call — SIPREC-style"
+              desc="Two tabs: customer + bank agent. The agent side taps the call audio and the verdict lands on their screen mid-call — exactly how it drops into a contact centre."
+              href="/call" cta="Open live call" delay={0.06}
+            />
+            <DemoCard
+              tag="DETECT" tagColor="#38BDF8"
+              title="Upload / stream detection"
+              desc="Drop an audio file or stream your mic. All layers run live: dual neural core, APP-fraud, replay + quality gates — with the 10-second flag clock."
+              href="#demo" cta="Try detection" delay={0.06}
+            />
+            <DemoCard
+              tag="STEP-UP" tagColor="#F59E0B"
+              title="Voice-OTP"
+              desc="A flagged call escalates here: read a fresh one-time code aloud. A recording can't answer it; a clone that does still fails the deepfake + replay checks."
+              href="/verify" cta="Run Voice-OTP" delay={0.12}
+            />
+            <DemoCard
+              tag="IDENTITY" tagColor="#22C55E"
+              title="1:1 Voiceprint"
+              desc="Enroll once, then verify by reading digits. An ECAPA speaker embedding proves it's this customer — same-voice cosine 0.80 vs 0.15 for an impostor."
+              href="/voiceprint" cta="Enroll & verify" delay={0.18}
+            />
+            <DemoCard
+              tag="CONSOLE" tagColor="#A78BFA"
+              title="Fraud console"
+              desc="What the analyst opens: per-call evidence packs, fraud-campaign correlation, governance (TPR/FPR, drift, registry), Prometheus metrics."
+              href={`${BACKEND}/cases`} cta="Open cases ↗" external delay={0.24}
+            />
+            <DemoCard
+              tag="CONTRACT" tagColor="#64748B"
+              title="One JSON verdict"
+              desc="risk_score · alert_level · action · escalation · replay · campaign — the same contract to the agent UI and the decisioning engine. No rip-and-replace."
+              href={`${BACKEND}/metrics`} cta="See metrics ↗" external delay={0.3}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* SIMULATION */}
       <section id="simulate" className="px-6 py-32 md:py-40">
         <div className="max-w-6xl mx-auto">
@@ -281,8 +347,8 @@ function Index() {
               score="08"
               color="#22C55E"
               verdict="PROTECTED"
-              note="Neural detector clear"
-              breakdown={["Neural · 05", "Spectral · 22", "Breath · 72", "Phase · 31", "Liveness · 18"]}
+              note="Neural core clear · channel trusted"
+              breakdown={["Neural · 05", "Acoustic · 22", "APP-fraud · 04", "Replay · 06", "Action · MONITOR"]}
               delay={0}
             />
             <AttackCard
@@ -290,17 +356,17 @@ function Index() {
               score="94"
               color="#FF4D6D"
               verdict="CRITICAL"
-              note="Neural detector flagged"
-              breakdown={["Neural · 96", "Spectral · 44", "Breath · 75", "Phase · 49", "Liveness · 80"]}
+              note="Dual neural core flagged"
+              breakdown={["Neural · 96", "Acoustic · 44", "APP-fraud · 08", "Replay · 12", "Action · BLOCK"]}
               delay={0.1}
             />
             <AttackCard
-              title="Custom Deepfake"
-              score="78"
+              title="Coached Customer"
+              score="80"
               color="#F59E0B"
               verdict="HIGH RISK"
-              note="Neural detector — borderline"
-              breakdown={["Neural · 77", "Spectral · 51", "Breath · 73", "Phase · 58", "Liveness · 66"]}
+              note="Real voice — APP-fraud in the script"
+              breakdown={["Neural · 06", "Acoustic · 19", "APP-fraud · 80", "Replay · 07", "Action · → HUMAN"]}
               delay={0.2}
             />
           </div>
@@ -313,6 +379,46 @@ function Index() {
         </p>
       </footer>
     </div>
+  );
+}
+
+function DemoCard({
+  tag, tagColor, title, desc, href, cta, delay, featured, external,
+}: {
+  tag: string; tagColor: string; title: string; desc: string; href: string; cta: string;
+  delay: number; featured?: boolean; external?: boolean;
+}) {
+  return (
+    <motion.a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.5, delay }}
+      className="group flex flex-col rounded-2xl p-7 transition-colors duration-300"
+      style={{
+        backgroundColor: "#0F1117",
+        border: `1px solid ${featured ? "rgba(94,234,212,0.35)" : "rgba(255,255,255,0.07)"}`,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = tagColor)}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = featured ? "rgba(94,234,212,0.35)" : "rgba(255,255,255,0.07)")}
+    >
+      <div className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tagColor }} />
+        <span className="font-mono text-[10px] tracking-[0.2em]" style={{ color: tagColor }}>{tag}</span>
+        {featured && (
+          <span className="ml-auto font-mono text-[9px] tracking-[0.15em] px-2 py-0.5 rounded-full"
+            style={{ border: `1px solid ${tagColor}`, color: tagColor }}>PANEL FOCUS</span>
+        )}
+      </div>
+      <div className="mt-5 text-[17px] font-semibold" style={{ color: "#F1F5F9" }}>{title}</div>
+      <div className="mt-2.5 text-[13px] flex-1" style={{ color: "#64748B", lineHeight: 1.55 }}>{desc}</div>
+      <div className="mt-6 font-mono text-[12px] inline-flex items-center gap-1.5 transition-colors"
+        style={{ color: tagColor }}>
+        {cta} <span className="transition-transform group-hover:translate-x-0.5">→</span>
+      </div>
+    </motion.a>
   );
 }
 

@@ -22,6 +22,8 @@ frontend/tsconfig.tsbuildinfo
 .codegraph/                       # local codegraph cache (2.9M)
 codecfake-vendor/                 # 314M upstream research clone; only ml/vendor/ is used
 sample_audio/                     # PRIVATE voice recordings (real + cloned) -- do not publish
+# PRIVATE Attack Range demo clips (team voices) -- rebuild via tools/prep_attack_clips.py
+frontend/public/attacks/
 backend/eval/corpus/              # 8M labelled audio corpus (data, not code)
 backend/eval/results*.json        # generated eval outputs
 backend/eval/report.html          # generated eval report
