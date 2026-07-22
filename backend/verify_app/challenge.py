@@ -7,6 +7,7 @@ genuine caller isn't failed for one misheard digit.
 """
 from __future__ import annotations
 
+import re
 import secrets
 
 from verify_app import config
@@ -32,9 +33,14 @@ def new_challenge(n: int | None = None, randomize: bool | None = None) -> str:
     return "".join(secrets.choice("0123456789") for _ in range(n))
 
 
-# Spoken-word -> digit, including the homophones people actually say and Whisper
-# actually emits ("oh" for zero, "for"/"to"/"ate" mishears).
+# Spoken-word -> digit across the languages a customer actually reads an OTP in.
+# English homophones people say / Whisper emits ("oh" for zero, "for"/"to"/"ate"
+# mishears), PLUS Hindi in Devanagari and its common romanizations -- a rural /
+# non-English caller reading digits aloud must not be failed by an English-only
+# gate (the core reason this app deploys in Indian villages at all). Mirrors the
+# shield's app/routes/challenge.py so both OTP paths speak the same languages.
 _W2D = {
+    # English + homophones
     "zero": "0", "oh": "0", "o": "0", "naught": "0", "nought": "0",
     "one": "1", "won": "1",
     "two": "2", "to": "2", "too": "2",
@@ -45,17 +51,34 @@ _W2D = {
     "seven": "7",
     "eight": "8", "ate": "8",
     "nine": "9",
+    # Hindi -- Devanagari words
+    "शून्य": "0", "सुन्य": "0", "एक": "1", "दो": "2", "तीन": "3", "चार": "4",
+    "पाँच": "5", "पांच": "5", "छह": "6", "छे": "6", "सात": "7", "आठ": "8", "नौ": "9",
+    # Hindi -- common romanizations (Whisper often romanizes Hindi speech)
+    "shunya": "0", "sunya": "0", "ek": "1", "do": "2", "teen": "3", "char": "4",
+    "chaar": "4", "paanch": "5", "panch": "5", "chhe": "6", "che": "6", "chah": "6",
+    "saat": "7", "aath": "8", "nau": "9",
 }
+# Devanagari numerals ०-९ -> ASCII, in case Whisper returns digits in that script.
+_DEVANAGARI_NUM = {c: str(i) for i, c in enumerate("०१२३४५६७८९")}
+
+# Tokenizer: ASCII digit | Devanagari numeral (U+0966-096F) | Latin word |
+# Devanagari word run (letters + combining matras, EXCLUDING the numeral block).
+# We can't split on isalnum(): Devanagari vowel signs (matras, e.g. ी in तीन) are
+# combining marks that isalnum() drops, which would shatter तीन into pieces.
+_DIGIT_TOKEN = re.compile(r"[0-9]|[०-९]|[a-z]+|[ऀ-॥॰-ॿ]+")
 
 
 def digits_from(text: str) -> str:
-    """Extract a digit string from free ASR text: keep literal digits, map
-    spelled-out number words (and their homophones)."""
+    """Extract a digit string from free ASR text across English + Hindi: keep
+    literal digits, map Devanagari numerals (०-९), and map spelled-out number
+    words (English homophones + Devanagari + romanized Hindi)."""
     out: list[str] = []
-    cleaned = "".join(c if c.isalnum() else " " for c in text.lower())
-    for tok in cleaned.split():
-        if tok.isdigit():
-            out.extend(tok)
+    for tok in _DIGIT_TOKEN.findall(text.lower()):
+        if tok in _DEVANAGARI_NUM:            # before isdigit(): '३'.isdigit() is True
+            out.append(_DEVANAGARI_NUM[tok])
+        elif tok.isascii() and tok.isdigit():
+            out.append(tok)
         elif tok in _W2D:
             out.append(_W2D[tok])
     return "".join(out)
