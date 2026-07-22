@@ -1,0 +1,385 @@
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#0F1117; --line:rgba(255,255,255,.08);
+    --text:#F1F5F9; --muted:#7A8699; --cyan:#5EEAD4; --ok:#22C55E; --warn:#F59E0B; --threat:#FF4D6D; --info:#38BDF8; --violet:#A78BFA;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace; --sans:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans)}
+  .deck{height:100vh;width:100vw;overflow:hidden;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+    padding:5.5vh 7vw;animation:fade .35s ease}
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.26em;color:var(--cyan);text-transform:uppercase;margin-bottom:16px}
+  h1{font-size:clamp(30px,4.6vw,62px);line-height:1.05;letter-spacing:-.02em;font-weight:700}
+  h2{font-size:clamp(22px,3.2vw,42px);line-height:1.1;letter-spacing:-.015em;font-weight:700;margin-bottom:22px}
+  h3{font-size:clamp(14px,1.45vw,18px);color:var(--cyan);font-weight:600;margin:0 0 8px}
+  p,li{font-size:clamp(13px,1.35vw,18px);line-height:1.5;color:#CBD5E1}
+  .lead{font-size:clamp(16px,1.85vw,24px);color:var(--text);max-width:64ch}
+  .muted{color:var(--muted)}
+  .big{color:var(--text);font-weight:700}
+  ul{list-style:none;display:grid;gap:12px;margin-top:6px}
+  li{position:relative;padding-left:24px}
+  li::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:8px;border-radius:2px;background:var(--cyan)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card h3{margin-bottom:6px}
+  .stat{font-family:var(--mono);font-size:clamp(24px,3.4vw,46px);font-weight:700;line-height:1}
+  .flow{display:flex;flex-wrap:wrap;gap:9px;align-items:center;font-family:var(--mono);font-size:13px;margin-top:8px}
+  .node{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px}
+  .node.acc{border-color:var(--cyan);color:var(--cyan)}
+  .arrow{color:var(--muted)}
+  .band{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .band span{font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:8px}
+  .g{background:rgba(34,197,94,.12);color:var(--ok)} .a{background:rgba(245,158,11,.12);color:var(--warn)} .r{background:rgba(255,77,109,.12);color:var(--threat)}
+  .foot{position:absolute;left:7vw;right:7vw;bottom:3vh;display:flex;justify-content:space-between;
+    font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .center{align-items:center;text-align:center}
+  .center ul{justify-items:center;text-align:left}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+  /* demo-specific */
+  .demo-badge{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;
+    color:#08090C;background:var(--cyan);border-radius:999px;padding:8px 18px;font-weight:700;letter-spacing:.04em;margin-bottom:18px;width:fit-content}
+  .demo-badge.mic{background:var(--info)} .demo-badge.otp{background:var(--warn)} .demo-badge.call{background:var(--violet)} .demo-badge.print{background:var(--ok)}
+  .url{font-family:var(--mono);color:var(--muted);font-size:13px}
+  .steps{counter-reset:s;display:grid;gap:12px;margin-top:6px}
+  .steps .st{position:relative;padding-left:40px;font-size:clamp(14px,1.5vw,19px);color:#CBD5E1;line-height:1.45}
+  .steps .st::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:-2px;width:26px;height:26px;
+    border-radius:50%;border:1px solid var(--cyan);color:var(--cyan);font-family:var(--mono);font-size:13px;display:flex;align-items:center;justify-content:center}
+  .say{margin-top:18px;border-left:2px solid var(--cyan);padding:4px 0 4px 16px;color:var(--text);font-size:clamp(14px,1.5vw,19px);font-style:italic;max-width:64ch}
+  .agenda{counter-reset:a;display:grid;gap:14px;margin-top:10px}
+  .agenda .row{display:grid;grid-template-columns:44px 1fr;gap:16px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line)}
+  .agenda .n{font-family:var(--mono);color:var(--cyan);font-size:20px}
+  .agenda .t{font-size:clamp(15px,1.7vw,21px);color:var(--text);font-weight:600}
+  .agenda .d{font-size:14px;color:var(--muted);margin-top:2px}
+  .hero-x{font-size:clamp(40px,7vw,90px);font-weight:800;letter-spacing:-.03em;line-height:1}
+  .nav{position:fixed;bottom:14px;right:16px;font-family:var(--mono);font-size:12px;color:var(--muted);z-index:10}
+  .hint{position:fixed;bottom:14px;left:16px;font-family:var(--mono);font-size:11px;color:var(--muted);z-index:10;opacity:.55}
+  @media print{.slide{display:flex!important;position:relative;inset:auto;height:100vh;page-break-after:always;animation:none}.nav,.hint{display:none}}
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide center">
+    <div class="kicker">Real-time AI voice-fraud defense for banks</div>
+    <h1>Dhwani&#8209;Kavach</h1>
+    <p class="lead" style="margin-top:18px">We won&rsquo;t just tell you it works. <span class="big">We&rsquo;ll show you</span> &mdash; live, end to end, on this laptop.</p>
+    <div class="band" style="justify-content:center"><span class="g">GREEN&nbsp;·&nbsp;genuine</span><span class="a">AMBER&nbsp;·&nbsp;review</span><span class="r">RED&nbsp;·&nbsp;block</span></div>
+    <p style="margin-top:24px;font-family:var(--mono);font-size:15px;letter-spacing:.18em;color:var(--cyan)">TEAM&nbsp;&nbsp;ERROR&nbsp;404</p>
+    <p class="muted" style="margin-top:8px;font-family:var(--mono);font-size:13px">Innovation &amp; Entrepreneurship panel &middot; IIT Kharagpur</p>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide">
+    <div class="kicker">Why we built this</div>
+    <h2>Voice is now a bank&rsquo;s weakest channel</h2>
+    <div class="grid2">
+      <div><ul>
+        <li><span class="big">Cloning is trivial.</span> Seconds of a customer&rsquo;s voice &rarr; a clone that authorises a transfer.</li>
+        <li><span class="big">Most vishing needs no deepfake.</span> A real human coerces a real customer &mdash; the larger share of losses.</li>
+        <li><span class="big">The money moves during the call.</span> Post-call detection is too late.</li>
+        <li><span class="big">Millions of calls, many languages.</span> Humans can&rsquo;t screen them.</li>
+      </ul></div>
+      <div class="card">
+        <h3 style="color:var(--threat)">Today&rsquo;s controls fail</h3>
+        <p style="margin-top:8px"><span style="color:var(--threat)">&times;</span> <b>OTP</b> &mdash; the victim reads it out under pressure.</p>
+        <p style="margin-top:10px"><span style="color:var(--threat)">&times;</span> <b>Voice biometrics</b> &mdash; a good clone passes; a coerced caller passes.</p>
+        <p style="margin-top:10px"><span style="color:var(--threat)">&times;</span> <b>Human agents</b> &mdash; can&rsquo;t hear a deepfake or catch a practised scammer.</p>
+      </div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE PROBLEM</span></div>
+  </section>
+
+  <!-- 3 AGENDA = DEMO FLOW -->
+  <section class="slide">
+    <div class="kicker">What you&rsquo;re about to see &mdash; live</div>
+    <h2>Six demos, then the product around them</h2>
+    <div class="agenda">
+      <div class="row"><div class="n">1</div><div><div class="t">Voiceprint</div><div class="d">Enrol once, verify by voice &mdash; identity that can&rsquo;t be forgotten or phished</div></div></div>
+      <div class="row"><div class="n">2</div><div><div class="t">Live microphone</div><div class="d">Real-time detection on a live voice, inside 10 seconds</div></div></div>
+      <div class="row"><div class="n">3</div><div><div class="t">Streaming fake &amp; real files</div><div class="d">The headline detector &mdash; RED vs GREEN, in ~3 seconds</div></div></div>
+      <div class="row"><div class="n">4</div><div><div class="t">Voice OTP</div><div class="d">Speak a fresh code &mdash; a recording can&rsquo;t answer it (in Hindi too)</div></div></div>
+      <div class="row"><div class="n">5</div><div><div class="t">The speaker&rarr;air&rarr;mic problem</div><div class="d">Where state-of-the-art models break &mdash; and our disarmingly simple answer</div></div></div>
+      <div class="row"><div class="n">6</div><div><div class="t">Live bank &harr; customer call</div><div class="d">Catching a coerced customer when the voice is 100% real</div></div></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE FLOW</span></div>
+  </section>
+
+  <!-- 4 DEMO 1 · VOICEPRINT -->
+  <section class="slide">
+    <div class="kicker">Demo 1 of 6 &middot; identity</div>
+    <div class="demo-badge print">&#9654;&nbsp;LIVE &middot; localhost:8080/voiceprint</div>
+    <h2>Your voice <span style="color:var(--cyan)">is</span> your password</h2>
+    <div class="grid2" style="align-items:center">
+      <div class="steps">
+        <div class="st">Enrol once by reading three short prompts &mdash; an ECAPA speaker embedding is stored (never the audio).</div>
+        <div class="st">Verify by reading a fresh one-time code &mdash; it confirms <b>this specific customer</b>, not just &ldquo;a live human&rdquo;.</div>
+        <div class="st">Nothing to remember, nothing to type, nothing to steal.</div>
+      </div>
+      <div class="card">
+        <h3>Measured, live</h3>
+        <p style="margin-top:6px">Same speaker vs different speaker:</p>
+        <div style="font-family:var(--mono);margin-top:10px;font-size:clamp(15px,1.7vw,20px)">
+          <div><span style="color:var(--ok)">same&nbsp;&nbsp;0.80</span> cosine</div>
+          <div style="margin-top:4px"><span style="color:var(--threat)">other 0.15</span> cosine</div>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:13px">A ~5&times; separation &mdash; and a stolen recording still can&rsquo;t answer the fresh code.</p>
+      </div>
+    </div>
+    <div class="say">&ldquo;Enrol once. From then on, the customer just speaks &mdash; and we know it&rsquo;s them.&rdquo;</div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>VOICEPRINT</span></div>
+  </section>
+
+  <!-- 5 DEMO 2 · LIVE MIC -->
+  <section class="slide">
+    <div class="kicker">Demo 2 of 6 &middot; real-time</div>
+    <div class="demo-badge mic">&#9654;&nbsp;LIVE &middot; dashboard &rarr; &ldquo;Use microphone&rdquo;</div>
+    <h2>Detection on a live voice, as it happens</h2>
+    <div class="grid2" style="align-items:start">
+      <div class="steps">
+        <div class="st">I speak into the mic &mdash; the spectrogram streams in real time.</div>
+        <div class="st">A live human reads <span style="color:var(--ok)">GREEN</span>; the risk score updates every ~2 s.</div>
+        <div class="st">Too quiet or noisy to judge? It says <span style="color:var(--info)">UNCERTAIN</span> &mdash; never a false all-clear.</div>
+      </div>
+      <div>
+        <div class="card"><div class="stat" style="color:var(--cyan)">&lt; 10 s</div><p class="muted" style="margin-top:8px">the rubric&rsquo;s ask &mdash; flag High Risk inside the first ten seconds. We show the clock on screen.</p></div>
+        <p class="muted" style="margin-top:14px;font-size:13px">Honest by design: abstaining on bad audio is a <b>feature</b>, not a miss &mdash; a laundered deepfake reads unreliable, not clean.</p>
+      </div>
+    </div>
+    <div class="say">&ldquo;This is the same engine a bank runs on a live call &mdash; here it&rsquo;s just listening to me.&rdquo;</div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>LIVE MIC</span></div>
+  </section>
+
+  <!-- 6 DEMO 3 · STREAMING FILES -->
+  <section class="slide">
+    <div class="kicker">Demo 3 of 6 &middot; the headline</div>
+    <div class="demo-badge">&#9654;&nbsp;LIVE &middot; dashboard &rarr; &ldquo;Stream a file&rdquo;</div>
+    <h2>A clone lights up RED. A real voice stays GREEN.</h2>
+    <div class="grid2" style="align-items:center">
+      <div class="steps">
+        <div class="st">Stream a verified clone &rarr; <span style="color:var(--threat)">RED, PEAK 97</span>, artifact window outlined, in ~3 s.</div>
+        <div class="st">Stream a real voice &rarr; <span style="color:var(--ok)">GREEN</span>. No false alarm.</div>
+        <div class="st">Two <b>independent</b> neural detectors vote &mdash; their blind spots don&rsquo;t overlap.</div>
+      </div>
+      <div class="card">
+        <h3>Measured &mdash; 122-clip held-out set</h3>
+        <div style="display:flex;gap:22px;margin-top:10px">
+          <div><div class="stat" style="color:var(--ok)">99.2%</div><div class="muted" style="font-size:12px;margin-top:4px">accuracy</div></div>
+          <div><div class="stat" style="color:var(--cyan)">1.6%</div><div class="muted" style="font-size:12px;margin-top:4px">EER</div></div>
+          <div><div class="stat" style="color:var(--cyan)">0.999</div><div class="muted" style="font-size:12px;margin-top:4px">AUC</div></div>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:12px;font-family:var(--mono)">reproducible: python -m eval.run ../Dataset_orig</p>
+      </div>
+    </div>
+    <div class="say">&ldquo;Micro-imperfections in pitch and frequency the human ear can&rsquo;t hear &mdash; the model can.&rdquo;</div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>STREAMING DETECTION</span></div>
+  </section>
+
+  <!-- 7 DEMO 4 · VOICE OTP -->
+  <section class="slide">
+    <div class="kicker">Demo 4 of 6 &middot; step-up</div>
+    <div class="demo-badge otp">&#9654;&nbsp;LIVE &middot; localhost:8080/verify</div>
+    <h2>Speak the code. A recording can&rsquo;t.</h2>
+    <div class="grid2" style="align-items:start">
+      <div class="steps">
+        <div class="st">The screen issues <b>fresh random digits</b> &mdash; different every time.</div>
+        <div class="st">I read them back. Two gates in one step: the <b>content</b> must match (a recording can&rsquo;t) <b>and</b> the voice must pass the deepfake check (a live TTS rig can&rsquo;t).</div>
+        <div class="st">Works in <b>Hindi and regional languages</b> &mdash; Devanagari or romanized digits, no reading English required.</div>
+      </div>
+      <div class="card">
+        <h3>Why it matters for India</h3>
+        <p style="margin-top:6px">Voice-only. No literacy, no English, no smartphone assumed &mdash; the customer just <b>speaks their language</b>. A step-up that <i>includes</i> the rural customer instead of locking them out.</p>
+        <div style="margin-top:10px"><span class="pill">एक दो तीन</span> <span class="pill">ek do teen</span> <span class="pill">० ९ ५</span></div>
+      </div>
+    </div>
+    <div class="say">&ldquo;This is how you challenge a caller you&rsquo;re unsure about &mdash; and it can&rsquo;t be replayed or pre-recorded.&rdquo;</div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>VOICE OTP</span></div>
+  </section>
+
+  <!-- 8 THE HARD PROBLEM -->
+  <section class="slide center">
+    <div class="kicker">Demo 5 of 6 &middot; the hard problem</div>
+    <h2 style="max-width:24ch">Play a clone through a <span style="color:var(--threat)">speaker</span>, and state-of-the-art detectors go blind.</h2>
+    <div class="flow" style="justify-content:center;font-size:15px;margin-top:6px">
+      <span class="node">clone file</span><span class="arrow">&rarr;</span>
+      <span class="node" style="border-color:var(--threat);color:var(--threat)">phone speaker</span><span class="arrow">&rarr;</span>
+      <span class="node" style="border-color:var(--threat);color:var(--threat)">air</span><span class="arrow">&rarr;</span>
+      <span class="node">mic / IVR</span>
+    </div>
+    <p class="lead" style="margin-top:22px">The air hop <span class="big">smears the very micro-artifacts</span> every artifact detector hunts for. This is the #1 real-world bypass &mdash; and most detectors read the replay as <span style="color:var(--ok)">cleaner</span> than the original.</p>
+    <p class="muted" style="margin-top:14px;font-size:14px">A false all-clear on the exact attack fraudsters actually use.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE REPLAY PROBLEM</span></div>
+  </section>
+
+  <!-- 9 THE SIMPLE ANSWER -->
+  <section class="slide">
+    <div class="kicker">Demo 5 of 6 &middot; our answer</div>
+    <h2>So we stopped fighting the artifact &mdash; and asked a simpler question</h2>
+    <p class="lead" style="margin-bottom:18px">Not <i>&ldquo;is this synthesis perfect?&rdquo;</i> but <span class="big">&ldquo;is this a live voice, or a playback?&rdquo;</span></p>
+    <div class="grid2" style="align-items:center">
+      <div><ul>
+        <li>A small speaker <b>physically cannot</b> reproduce the low band a chest-resonant human voice carries at a real mic &mdash; nor the top octave (the speaker+air path rolls it off).</li>
+        <li>Two cheap spectral ratios catch exactly that. No model, no training &mdash; <b>physics</b>.</li>
+        <li>Either the neural model catches the synthesis, <b>or</b> this catches the replay. The one thing it will never do is silently trust a speaker playback.</li>
+      </ul></div>
+      <div class="card">
+        <div class="demo-badge" style="margin-bottom:14px">&#9654;&nbsp;LIVE &middot; play a clone at the mic</div>
+        <h3>Measured on our data</h3>
+        <p style="margin-top:6px;font-family:var(--mono);font-size:15px">
+          <span style="color:var(--ok)">0</span> false replay flags / 122 real clips<br>
+          replay clip &rarr; <span style="color:var(--threat)">suspect, score 94</span> &rarr; forced CHALLENGE
+        </p>
+        <p class="muted" style="margin-top:12px;font-size:13px">The elegant solutions are the ones you can explain in one sentence.</p>
+      </div>
+    </div>
+    <div class="say">&ldquo;Everyone else tunes bigger models to chase the smeared artifact. We just detect the speaker.&rdquo;</div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE CHANNEL GATE</span></div>
+  </section>
+
+  <!-- 10 DEMO 6 · LIVE CALL -->
+  <section class="slide">
+    <div class="kicker">Demo 6 of 6 &middot; the invisible fraud</div>
+    <div class="demo-badge call">&#9654;&nbsp;LIVE &middot; localhost:8080/call &middot; two tabs</div>
+    <h2>When the voice is real &mdash; and it&rsquo;s still fraud</h2>
+    <div class="grid2" style="align-items:start">
+      <div class="steps">
+        <div class="st">A live call between a bank agent and a customer. The customer&rsquo;s voice is <b>100% real</b>.</div>
+        <div class="st">Voice biometrics pass. Deepfake detection passes. Every pure detector is <b>blind</b>.</div>
+        <div class="st">We read the <b>conversation</b> &mdash; a genuine customer being coached or coerced in real time &mdash; and escalate to a <b>human</b>, because no voice test can clear a coerced caller.</div>
+      </div>
+      <div class="card">
+        <h3>APP-fraud tactics (multilingual)</h3>
+        <div style="margin-top:8px"><span class="pill">coaching</span> <span class="pill">duress</span> <span class="pill">scam narrative</span> <span class="pill">agent pressure</span> <span class="pill">high-risk intent</span> <span class="pill">pays a stranger</span></div>
+        <p class="muted" style="margin-top:12px;font-size:13px">Whisper (auto-detects Hindi/regional) &rarr; Llama-3.1 reads the intent. The signal neither biometrics nor deepfake detection can see.</p>
+      </div>
+    </div>
+    <div class="say">&ldquo;This is the largest share of real vishing loss &mdash; and the one thing a deepfake-only tool can&rsquo;t even see.&rdquo;</div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>LIVE CALL &middot; APP-FRAUD</span></div>
+  </section>
+
+  <!-- 11 ONE DECISION -->
+  <section class="slide">
+    <div class="kicker">How it all fuses</div>
+    <h2>Five signals &rarr; one explainable decision &rarr; the right step-up</h2>
+    <div class="flow">
+      <span class="node">Dual neural deepfake</span><span class="arrow">+</span>
+      <span class="node">APP-fraud (STT&rarr;LLM)</span><span class="arrow">+</span>
+      <span class="node">Replay &amp; quality gates</span><span class="arrow">&rarr;</span>
+      <span class="node acc">Fusion + txn context</span><span class="arrow">&rarr;</span>
+      <span class="node acc">MONITOR / CHALLENGE / BLOCK</span><span class="arrow">&rarr;</span>
+      <span class="node acc">voice-OTP / voiceprint / human</span>
+    </div>
+    <div class="grid3" style="margin-top:24px">
+      <div class="card"><div class="stat" style="color:var(--cyan)">~4s</div><p class="muted" style="margin-top:8px">first verdict, mid-call</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">1 JSON</div><p class="muted" style="margin-top:8px">verdict the agent UI &amp; fraud engine both act on</p></div>
+      <div class="card"><div class="stat" style="color:var(--cyan)">0</div><p class="muted" style="margin-top:8px">audio stored &mdash; verdict only</p></div>
+    </div>
+    <p class="muted" style="margin-top:16px;font-size:13px">Every decision ships a plain-English reason &mdash; explainable to an auditor by design.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>DECISION</span></div>
+  </section>
+
+  <!-- 12 THE REST -->
+  <section class="slide">
+    <div class="kicker">And the rest &mdash; it&rsquo;s a product, not a notebook</div>
+    <h2>The console a bank actually operates</h2>
+    <div class="grid3">
+      <div class="card"><h3>Cases &amp; evidence</h3><p>Per-call evidence pack: score, layers, transcript, waveform &mdash; what the fraud analyst opens.</p></div>
+      <div class="card"><h3>Campaigns</h3><p>Voiceprint correlation &mdash; &ldquo;the same synthetic voice hit 15 customers&rdquo; &mdash; and a known-fraud blocklist.</p></div>
+      <div class="card"><h3>Governance</h3><p>Live TPR/FPR, drift alerts, champion/challenger registry &mdash; RBI Model-Risk Management, built in.</p></div>
+      <div class="card"><h3>Shadow mode</h3><p>Score &amp; log for 30 days, act on nothing. Prove it on your own traffic, then flip one switch.</p></div>
+      <div class="card"><h3>Metrics</h3><p>Prometheus endpoint &mdash; plugs into your existing monitoring.</p></div>
+      <div class="card"><h3>Attack Range</h3><p>A mock bank + a live attacker + a shield ON/OFF toggle &mdash; watch the money leave, then watch it stop.</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THE PRODUCT</span></div>
+  </section>
+
+  <!-- 13 INTEGRATION -->
+  <section class="slide">
+    <div class="kicker">How it drops in</div>
+    <h2>Beside your stack, on-prem, no rip-and-replace</h2>
+    <div class="flow">
+      <span class="node">Caller</span><span class="arrow">&rarr;</span>
+      <span class="node">Telephony (Genesys / Avaya / Cisco)</span><span class="arrow">&rarr;</span>
+      <span class="node">SIPREC media-fork</span><span class="arrow">&rarr;</span>
+      <span class="node acc">Dhwani-Kavach (Docker)</span><span class="arrow">&rarr;</span>
+      <span class="node">Agent / fraud engine</span>
+    </div>
+    <div class="grid3" style="margin-top:24px">
+      <div class="card"><h3>On-prem &amp; private</h3><p>Runs in your DMZ. No audio or call data leaves the bank. RBI data-localisation clean.</p></div>
+      <div class="card"><h3>Reaches everyone</h3><p>Voice-only &mdash; works for rural, low-literacy, non-English customers and business-correspondent calls, unchanged.</p></div>
+      <div class="card"><h3>Runs like a service</h3><p>Stateless, scales horizontally, CPU-viable, health probes, append-only audit.</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>INTEGRATION</span></div>
+  </section>
+
+  <!-- 13b FINANCIAL INCLUSION -->
+  <section class="slide">
+    <div class="kicker">Built for Bharat, not just metro banking</div>
+    <h2>The customers who can least afford fraud — protected without changing a thing</h2>
+    <p class="lead" style="margin-bottom:18px">Voice-first, passive, on-prem &mdash; it fits rural India <span class="big">by design</span>: no app, no literacy, no English, works on a &#8377;1000 feature phone. The customer just speaks.</p>
+    <div class="grid3">
+      <div class="card"><h3>Vernacular scam warning</h3><p>Coercion caught on the bank line &rarr; a <b>spoken Hindi warning</b>, at the moment of risk. <span class="pill">/rural</span></p></div>
+      <div class="card"><h3>Aural Voice-OTP</h3><p>The one-time code is <b>spoken, not read</b> &mdash; usable without literacy. <span class="pill">/verify</span></p></div>
+      <div class="card"><h3>Bank Mitra voice-auth</h3><p>The agent authenticates <b>to the bank</b> by voice &mdash; stolen device / cloned voice caught. <span class="pill">/mitra</span></p></div>
+      <div class="card"><h3>Every language</h3><p>Deepfake detection is language-agnostic; coercion via Whisper + <b>Bhashini</b> for tribal dialects. <span class="pill">/languages</span></p></div>
+      <div class="card"><h3>Fraud-ring alert</h3><p>One clone impersonating many customers <b>on calls to the bank</b> &rarr; blocklist + freeze + advisory. <span class="pill">/campaign</span></p></div>
+      <div class="card" style="border-color:rgba(94,234,212,.3)"><h3>Honest placement</h3><p>Bank-side: it protects the moment fraud <b>reaches the bank's money</b>. The scammer's direct call to a phone is a telco/device future direction.</p></div>
+    </div>
+    <p class="muted" style="margin-top:16px;font-size:14px">Protects the <b style="color:#F1F5F9">financial-inclusion mission</b> &mdash; Jan Dhan / DBT scale, on-prem, no new customer hardware.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>FINANCIAL INCLUSION</span></div>
+  </section>
+
+  <!-- 14 HONEST -->
+  <section class="slide">
+    <div class="kicker">Intellectual honesty</div>
+    <h2>What&rsquo;s measured, and what&rsquo;s still the frontier</h2>
+    <div class="grid2">
+      <div><h3 style="color:var(--ok)">Measured, reproducible</h3><ul>
+        <li>99.2% acc &middot; EER 1.6% &middot; AUC 0.999 on the 122-clip held-out set (own voices + commercial clones).</li>
+        <li>Replay gate: 0 false flags on 122 real clips; replay &rarr; forced CHALLENGE.</li>
+        <li>Voiceprint: same 0.80 vs other 0.15 cosine, live.</li>
+      </ul></div>
+      <div><h3 style="color:var(--warn)">The honest frontier</h3><ul>
+        <li>Telephony (8 kHz) is the known gap (AUC ~0.62&ndash;0.82). Channel-robust retrain done &mdash; worst channel 0.47&rarr;0.84 &mdash; validating before deploy.</li>
+        <li>Live voice-conversion &amp; adversarial evasion: the retrain + red-team loop is the answer.</li>
+      </ul></div>
+    </div>
+    <p class="lead" style="margin-top:18px;color:var(--cyan)">We&rsquo;d rather show you the roadmap than pretend it&rsquo;s finished.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>HONEST NUMBERS</span></div>
+  </section>
+
+  <!-- 15 CLOSE -->
+  <section class="slide center">
+    <div class="kicker">In one line</div>
+    <h2 style="max-width:26ch">Is the voice synthetic &middot; is the channel real &middot; is the customer coerced &mdash; fused into one decision, then escalated.</h2>
+    <p class="lead" style="margin-top:14px">A point solution covers one of those. <span class="big">We cover the surface</span> &mdash; on-prem, real-time, in your customers&rsquo; own language.</p>
+    <p style="margin-top:26px;font-family:var(--mono);font-size:15px;letter-spacing:.18em;color:var(--cyan)">TEAM&nbsp;&nbsp;ERROR&nbsp;404</p>
+    <p class="muted" style="margin-top:8px;font-family:var(--mono);font-size:13px">Thank you &mdash; questions?</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>THANK YOU</span></div>
+  </section>
+
+</div>
+
+<div class="nav" id="nav">1 / 15</div>
+<div class="hint">&larr; &rarr; / space to navigate &middot; F fullscreen &middot; Ctrl+P &rarr; PDF</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0; const nav=document.getElementById('nav');
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    nav.textContent=(i+1)+' / '+slides.length;
+  }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();show(i+1)}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();show(i-1)}
+    else if(e.key==='Home'){show(0)} else if(e.key==='End'){show(slides.length-1)}
+    else if(e.key.toLowerCase()==='f'){document.documentElement.requestFullscreen?.()}
+  });
+  document.getElementById('deck').addEventListener('click',e=>{ if(e.clientX > innerWidth*0.4) show(i+1); else show(i-1); });
+  show(0);
+</script>

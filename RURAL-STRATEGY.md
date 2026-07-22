@@ -53,14 +53,17 @@ most-demoable rural feature.
   from `/api/analyze`; deliver via the IVR's regional-language TTS (or Bhashini,
   below) instead of the browser.
 
-### 2. Business-Correspondent voiceprint + impersonation detection — **DEMO BUILT (`/mitra`)**
-Enroll every Bank Mitra's voiceprint (ECAPA — already built in `verify_app`).
-Detect when "the Mitra" on a call is a clone/impostor. The BC *is* the bank to a
-village, so an impersonated/cloned agent is a direct fraud node the customer can't
-check. **Demo (`routes/mitra.tsx`):** three cases — genuine Mitra (VERIFIED),
-stranger (voice mismatch → REJECTED), and AI clone (partly passes the 1:1
-voiceprint but the synthetic-voice check catches it → REJECTED) — which shows
-*why* both checks are needed. Reuses the real ECAPA engine (`/voiceprint`).
+### 2. Business-Correspondent voice-auth to the bank — **DEMO BUILT (`/mitra`)**
+Placement matters: the shield is **bank-side**, so this is NOT the villager
+checking the person in front of them (in-person, no bank call). It's the Bank
+Mitra **authenticating to the bank by voice** when opening a BC session /
+authorising a high-value or AePS transaction — the bank's side of the BC
+connection, which the bank runs. A BC device+PIN can be stolen, shared, or the
+Mitra's voice cloned; voice binds the session to the enrolled person. **Demo
+(`routes/mitra.tsx`):** genuine Mitra (SESSION AUTHORISED), stolen/shared device
+(voice mismatch → BLOCKED), and cloned Mitra voice (partly passes the 1:1
+voiceprint but the synthetic-voice check catches it → BLOCKED) — shows *why* both
+checks are needed. Reuses the real ECAPA engine (`/voiceprint`).
 
 ### 3. Aural Voice-OTP via IVR TTS — **BUILT (in `/verify`)**
 The challenge digits are now **spoken aloud in Hindi** before recording (proper
@@ -82,12 +85,16 @@ coercion = Whisper-native + Bhashini), a spoken Hindi warning, and a coverage gr
 by endonym (native vs Bhashini). Backend is already STT-swappable (`KV_ASR_LANG`,
 `KV_WHISPER_SIZE`); the adapter drops in without touching the detectors.
 
-### 6. District-level campaign alerting — **DEMO BUILT (`/campaign`)**
-Point the existing voiceprint-correlation at a region: when one voice sweeps a
-district, blocklist it and **proactively warn** the customers it hasn't reached
-yet. **Demo (`routes/campaign.tsx`):** a fraud voice sweeping Rampur block across
-villages, with "protect the district" firing a blocklist + a warning wave to the
-still-at-risk — community protection where the individual never reports.
+### 6. Fraud-ring / district alerting — **DEMO BUILT (`/campaign`)**
+Placement matters: the bank does **not** see a scammer dial a villager — but it
+**does** see the fraud voice when it **calls the bank**. A clone rings the contact
+centre account after account, impersonating different customers; all inbound, so
+the voiceprint-correlation ties them into a ring. **Demo (`routes/campaign.tsx`):**
+one voice impersonating 8 customers across Rampur block — "contain the ring"
+blocklists the voice, **freezes/reviews** the accounts it touched, and pushes a
+**broad fraud advisory** to the block's customers over the bank's OWN SMS/IVR. It
+does NOT claim to know who a scammer will call next — the advisory is broad, and
+the demo says so.
 
 ---
 

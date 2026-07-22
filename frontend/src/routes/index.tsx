@@ -307,9 +307,9 @@ function Index() {
             />
             <DemoCard
               tag="RURAL · बैंक मित्र" tagColor="#F59E0B"
-              title="Bank Mitra verification"
-              desc="In a branchless village the Business Correspondent IS the bank. Voiceprint the Mitra — a stranger fails, an AI clone is caught by the deepfake check."
-              href="/mitra" cta="Verify a Mitra" delay={0.18}
+              title="Bank Mitra voice login"
+              desc="Bank-side: the Business Correspondent authenticates to the bank by voice. A stolen/shared device fails the voiceprint; a cloned Mitra voice is caught by the deepfake check."
+              href="/mitra" cta="Try it" delay={0.18}
             />
             <DemoCard
               tag="RURAL · भाषा" tagColor="#F59E0B"
@@ -318,10 +318,10 @@ function Index() {
               href="/languages" cta="See coverage" delay={0.24}
             />
             <DemoCard
-              tag="RURAL · ज़िला" tagColor="#F59E0B"
-              title="District campaign alert"
-              desc="Villagers rarely report — so one fraud voice sweeping a district is caught as a ring, blocklisted, and the customers it hasn't reached are warned proactively."
-              href="/campaign" cta="See the sweep" delay={0.3}
+              tag="RURAL · फ़्रॉड रिंग" tagColor="#F59E0B"
+              title="Fraud-ring alert"
+              desc="One cloned voice calls the bank impersonating customer after customer. Voiceprint correlation ties the calls into a ring → blocklist + freeze + a broad advisory."
+              href="/campaign" cta="See the ring" delay={0.3}
             />
             <DemoCard
               tag="STEP-UP" tagColor="#38BDF8"

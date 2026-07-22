@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
-// Bank Mitra (Business Correspondent) verification. In a village with no branch,
-// the BC *is* the bank — and an impersonated or cloned Mitra is a direct fraud
-// node the customer has no way to check. So we voiceprint every Mitra (ECAPA, the
-// same engine as /voiceprint) and verify their voice on each visit. Two checks,
-// because a clone is the hard case: a 1:1 voiceprint alone can be partly fooled by
-// a good clone, so the deepfake detector runs alongside it.
+// Bank Mitra (Business Correspondent) authentication TO THE BANK. Placement note:
+// the shield runs bank-side, so this is NOT the villager checking the person in
+// front of them (in-person, no bank call). It's the Mitra authenticating to the
+// bank by voice when opening a BC session / authorising a high-value or AePS
+// transaction — the bank's side of the BC connection, which the bank runs. A BC
+// device + PIN can be stolen, shared, or the Mitra's voice cloned; voice binds the
+// session to the enrolled person. Two checks: a good clone can partly fool the 1:1
+// voiceprint, so the deepfake detector runs alongside it.
 //
 // Illustrative scenario (labeled) with realistic numbers from the real ECAPA
 // engine (same-voice ~0.8, other ~0.15, clone ~0.7 — passes voiceprint alone,
@@ -25,19 +27,19 @@ type Scenario = {
 
 const SCENARIOS: Scenario[] = [
   {
-    id: "genuine", label: "The real Bank Mitra", sub: "Ramesh, the enrolled agent, arrives",
+    id: "genuine", label: "The real Mitra logs in", sub: "Ramesh opens his BC session by voice",
     cosine: 0.82, deepfakeRed: false, verdict: "VERIFIED", color: "#22C55E",
     reason: "Voice matches the enrolled Mitra, and it's a live human.",
-    note: "The customer can trust this is really their Bank Mitra — confirmed by voice, not by an ID card they can't read.",
+    note: "The bank binds the session to the real person — not just a device + PIN that can be shared, lent, or stolen.",
   },
   {
-    id: "impostor", label: "A different person", sub: "someone else claims to be the Mitra",
+    id: "impostor", label: "Stolen / shared device", sub: "someone else is operating Ramesh's terminal",
     cosine: 0.14, deepfakeRed: false, verdict: "REJECTED", color: "#FF4D6D",
-    reason: "Voice does not match the enrolled Mitra — VOICE_MISMATCH.",
-    note: "A stranger posing as the Bank Mitra is caught instantly: their voiceprint simply isn't the enrolled one.",
+    reason: "Voice does not match the enrolled Mitra — VOICE_MISMATCH. Session blocked.",
+    note: "A stolen or shared BC device+PIN is useless without the Mitra's own live voice — the biometric the fraudster doesn't have.",
   },
   {
-    id: "clone", label: "An AI clone of the Mitra", sub: "a synthetic copy of Ramesh's voice",
+    id: "clone", label: "Cloned Mitra voice", sub: "a synthetic copy of Ramesh replays the login",
     cosine: 0.71, deepfakeRed: true, verdict: "REJECTED", color: "#F59E0B",
     reason: "Voiceprint alone would PASS (0.71 ≥ 0.40) — but the synthetic-voice check flags it.",
     note: "This is why two checks matter: a good clone can partly fool a 1:1 voiceprint, so the deepfake detector runs alongside it and catches the synthesis.",
@@ -65,12 +67,12 @@ function MitraVerify() {
           <div className="font-mono text-[12px] tracking-[0.3em]" style={{ color: C.cyan }}>DHWANI-KAVACH · बैंक मित्र</div>
           <span className="font-mono text-[10px] px-2 py-0.5 rounded-full" style={{ border: `1px solid ${C.muted}`, color: C.muted }}>ILLUSTRATIVE SCENARIO</span>
         </div>
-        <h1 className="mt-2 text-2xl md:text-3xl font-semibold">Is this really your Bank Mitra?</h1>
+        <h1 className="mt-2 text-2xl md:text-3xl font-semibold">Is the agent operating this BC session really the Mitra?</h1>
         <p className="mt-2 text-[14px] max-w-3xl" style={{ color: C.muted, lineHeight: 1.6 }}>
-          In a village with no branch, the <b style={{ color: C.text }}>Business Correspondent (Bank Mitra)</b> is the bank — and a
-          customer has no way to tell a genuine Mitra from an impostor or a cloned voice. So we <b style={{ color: C.text }}>voiceprint
-          every Mitra once</b> and verify their voice on each visit. A stranger fails the voiceprint; an AI clone that partly
-          matches is caught by the synthetic-voice check.
+          A <b style={{ color: C.text }}>Business Correspondent (Bank Mitra)</b> connects to the bank to run a village's transactions.
+          That device + PIN can be <b style={{ color: C.text }}>stolen, shared, or the Mitra's voice cloned</b>. So — bank-side, where the
+          shield runs — the Mitra <b style={{ color: C.text }}>authenticates by voice</b> when opening a session or authorising a high-value /
+          AePS transaction. It binds the session to the enrolled person, not just a device+PIN anyone could hold.
         </p>
 
         {/* enrolled agent */}
@@ -78,7 +80,7 @@ function MitraVerify() {
           <div className="w-11 h-11 rounded-full flex items-center justify-center font-mono text-[15px]" style={{ border: `1px solid ${C.cyan}`, color: C.cyan }}>रा</div>
           <div>
             <div className="text-[14px] font-medium">Enrolled Bank Mitra · Ramesh Kumar</div>
-            <div className="font-mono text-[11px]" style={{ color: C.muted }}>voiceprint stored (ECAPA embedding) · device ID · service area: Rampur block</div>
+            <div className="font-mono text-[11px]" style={{ color: C.muted }}>voiceprint stored (ECAPA embedding) · authenticates each BC session · Rampur block</div>
           </div>
           <span className="ml-auto font-mono text-[10px] px-2 py-1 rounded-full" style={{ border: `1px solid ${C.ok}`, color: C.ok }}>✓ ENROLLED</span>
         </div>
@@ -86,7 +88,7 @@ function MitraVerify() {
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           {/* who's at the door */}
           <div className="rounded-2xl p-5" style={{ backgroundColor: C.surface, border: `1px solid ${C.faint}` }}>
-            <div className="font-mono text-[11px] tracking-[0.2em] mb-3" style={{ color: C.muted }}>WHO'S CLAIMING TO BE THE MITRA?</div>
+            <div className="font-mono text-[11px] tracking-[0.2em] mb-3" style={{ color: C.muted }}>WHO'S OPERATING THIS BC SESSION?</div>
             <div className="space-y-2">
               {SCENARIOS.map((s) => (
                 <button key={s.id} onClick={() => pick(s)} disabled={phase === "checking"}
@@ -135,7 +137,7 @@ function MitraVerify() {
                 <motion.div key={scenario.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="mt-5 rounded-xl px-4 py-4" style={{ border: `1px solid ${scenario.color}`, backgroundColor: `${scenario.color}14` }}>
                   <div className="font-mono font-bold text-[20px] tracking-wider" style={{ color: scenario.color }}>
-                    {scenario.verdict === "VERIFIED" ? "✓ MITRA VERIFIED" : "✗ REJECTED · impersonation"}
+                    {scenario.verdict === "VERIFIED" ? "✓ SESSION AUTHORISED" : "✗ SESSION BLOCKED"}
                   </div>
                   <div className="mt-1.5 text-[13px]" style={{ color: C.text }}>{scenario.reason}</div>
                 </motion.div>
@@ -159,8 +161,8 @@ function MitraVerify() {
         {/* explanation */}
         <div className="mt-6 grid gap-5 md:grid-cols-3">
           <div className="rounded-xl p-5" style={{ backgroundColor: C.surface, border: `1px solid ${C.faint}` }}>
-            <h3 className="text-[14px] font-semibold" style={{ color: C.cyan }}>The BC is a fraud node</h3>
-            <p className="mt-2 text-[13px]" style={{ color: C.muted, lineHeight: 1.6 }}>Where the Bank Mitra <i>is</i> the bank, impersonation or a bribed/cloned agent is a direct attack the villager can't detect. Voiceprinting the Mitra closes it.</p>
+            <h3 className="text-[14px] font-semibold" style={{ color: C.cyan }}>Bank-side, where the shield runs</h3>
+            <p className="mt-2 text-[13px]" style={{ color: C.muted, lineHeight: 1.6 }}>Not the villager checking the Mitra (in-person, no call) — this is the Mitra <b style={{ color: C.text }}>authenticating to the bank</b> when opening a session. A shared/stolen BC device+PIN is a real fraud vector voice closes.</p>
           </div>
           <div className="rounded-xl p-5" style={{ backgroundColor: C.surface, border: `1px solid ${C.faint}` }}>
             <h3 className="text-[14px] font-semibold" style={{ color: C.cyan }}>Same real engine</h3>
