@@ -1,3 +1,10 @@
+> **⛔ ARCHIVED — executed, kept for history.** These phases shipped; this
+> plan no longer reflects current state (it predates the dual-detector
+> architecture and the measured numbers). For where the project stands, see
+> [HANDOFF.md](../../HANDOFF.md) and [FINALS-DECK-BRIEF.md](../../FINALS-DECK-BRIEF.md).
+
+---
+
 # Dhwani-Kavach — Competitive-Edge Build Plan (Phases G–K)
 
 Build plan for the 7 features in [COMPETITIVE-EDGE.md](COMPETITIVE-EDGE.md).

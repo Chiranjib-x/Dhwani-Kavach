@@ -1,3 +1,10 @@
+> **⛔ ARCHIVED — executed, kept for history.** These phases shipped; this
+> plan no longer reflects current state (it predates the dual-detector
+> architecture and the measured numbers). For where the project stands, see
+> [HANDOFF.md](../../HANDOFF.md) and [FINALS-DECK-BRIEF.md](../../FINALS-DECK-BRIEF.md).
+
+---
+
 # Dhwani-Kavach → Real-Time Call-Fraud Shield — Build Plan
 
 The repositioning: stop shipping a *deepfake detector* (commodity, narrow).
