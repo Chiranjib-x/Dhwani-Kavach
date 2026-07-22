@@ -19,7 +19,7 @@ export default function Nav() {
           <a href="#threat" className="hover:text-[#F1F5F9] transition-colors">Threat</a>
           <a href="#defense" className="hover:text-[#F1F5F9] transition-colors">Defense</a>
           <a href="#demos" className="hover:text-[#F1F5F9] transition-colors">Demos</a>
-          <a href="/call" className="hover:text-[#F1F5F9] transition-colors">Live Call</a>
+          <a href="/range" style={{ color: "#5EEAD4" }} className="transition-colors">Attack Range</a>
           <a href="/verify" className="hover:text-[#F1F5F9] transition-colors">Voice OTP</a>
           <a href="/voiceprint" className="hover:text-[#F1F5F9] transition-colors">Voiceprint</a>
         </div>

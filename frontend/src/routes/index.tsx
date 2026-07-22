@@ -270,7 +270,7 @@ function Index() {
         <div className="max-w-6xl mx-auto">
           <Reveal>
             <h2 className="font-bold tracking-tight text-center" style={{ color: "#F1F5F9", fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
-              Five live demos. One integration.
+              Live demos. One integration.
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
@@ -282,10 +282,16 @@ function Index() {
 
           <div className="mt-14 grid gap-5 md:grid-cols-3">
             <DemoCard
-              tag="INTEGRATION" tagColor="#5EEAD4" featured
+              tag="ATTACK RANGE" tagColor="#5EEAD4" featured
+              title="Mock bank vs. attacker"
+              desc="Launch a THREAT.md attack at a mock bank, then flip the shield ON/OFF. Off: the money leaves. On: caught and escalated. The A/B that sells it."
+              href="/range" cta="Open the range" delay={0}
+            />
+            <DemoCard
+              tag="INTEGRATION" tagColor="#38BDF8"
               title="Live Call — SIPREC-style"
               desc="Two tabs: customer + bank agent. The agent side taps the call audio and the verdict lands on their screen mid-call — exactly how it drops into a contact centre."
-              href="/call" cta="Open live call" delay={0}
+              href="/call" cta="Open live call" delay={0.06}
             />
             <DemoCard
               tag="DETECT" tagColor="#38BDF8"
