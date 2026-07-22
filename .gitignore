@@ -33,5 +33,13 @@ backend/models/w2v2aasist_full.safetensors
 backend/models/calibration.json
 # 1.35GB ported public checkpoint (detector_v4) -- keep local, rebuild via tools/port_sls.py
 backend/models/xlsr_sls.safetensors
+# 1.5GB local model bundle zip -- keep local, never push
+backend/models.zip
 # generated eval output, same category as results*.json above
 backend/eval/ab_channels.json
+
+# v2 verification app: never commit DB, model cache, or built Space
+backend/verify_app/kavach.db*
+backend/verify_app/.cache/
+space/
+backend/verify_app/captured/

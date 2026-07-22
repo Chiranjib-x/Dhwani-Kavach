@@ -62,3 +62,4 @@ cd frontend && npm install && npm run dev
 | [FINALS-DECK-BRIEF.md](FINALS-DECK-BRIEF.md) | the measured numbers (single source of truth) |
 | [INTEGRATION.md](INTEGRATION.md) | how it drops into a bank (SIPREC, on-prem) |
 | [PHASE-H-KAGGLE.md](PHASE-H-KAGGLE.md) | channel-robust retrain pipeline |
+| [MASTER-PLAN.md](MASTER-PLAN.md) | **companion app** — `backend/verify_app/`: 1:1 voiceprint verification (enroll once → verify by reading digits). Standalone; runs alongside the shield. |
