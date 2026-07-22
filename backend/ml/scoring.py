@@ -116,7 +116,14 @@ class StreamAggregator:
     def update(self, p_calibrated: float) -> dict:
         p = min(max(float(p_calibrated), 0.0), 1.0)
         self.s = self.alpha * p + (1.0 - self.alpha) * self.s
-        self.call_max = max(self.call_max, self.s)
+        # call_max must track the RAW incoming score, not the smoothed self.s --
+        # a single 97%-scoring window arriving right after a cold start (self.s=0)
+        # gets crushed by the EWMA blend (0.35*0.97+0.65*0 = 0.34) and never
+        # recovers, so tracking self.s silently caps "PEAK" at ~50 instead of the
+        # true 97 the clip actually hit. That defeats the whole point of this
+        # field ("one cloned segment flags the call") and reads on stage as a
+        # weak, unconvincing number even when the call IS a clone.
+        self.call_max = max(self.call_max, p)
 
         if self.s >= self.t_high:
             self._above += 1
@@ -161,5 +168,18 @@ if __name__ == "__main__":
     for _ in range(12):
         low = agg.update(0.02)
     assert low["alert_level"] == "GREEN", "must clear after sustained low risk"
+
+    # call_max must report the RAW peak, not the EWMA-smoothed track: a single
+    # high-scoring window right after a cold start (self.s=0) gets crushed by
+    # the EWMA blend, so tracking self.s instead of the raw p silently caps
+    # "PEAK" far below what the call actually hit (regression: was capped ~34
+    # for a raw 97 peak -- see ml/detector.py docstring "one cloned segment
+    # flags the call").
+    agg.reset()
+    st = agg.update(0.97)
+    assert st["call_max"] == 97, f"call_max must capture the raw peak immediately, got {st['call_max']}"
+    for p in [0.10, 0.10, 0.10]:
+        st = agg.update(p)
+    assert st["call_max"] == 97, f"call_max must hold the peak even as later windows score low, got {st['call_max']}"
 
     print("scoring self-check ok")
