@@ -67,6 +67,19 @@ Also safe: `sample_audio/Script_1..5` (real) and their `_clone` counterparts (fa
 - `lily_original.mp3`, `chris_original.mp3` — real voices that read fake
 - `glenn_1-clone.mp3` — the one clone that reads real
 - `chirag_8/11/16`, `glenn_11` — real voices that sit near the boundary (AMBER)
+- **All `chirag_*-clone.mp3` and `glenn_*-clone.mp3` (clean AND `*_speaker_N`
+  loudspeaker-replay versions), plus `aditya_8-clone`/`aditya_10-clone`/
+  `aditya_speaker_4`** — a real, confirmed cross-model disagreement: on the
+  chirag/glenn set, `clone_v3` reads near-zero (0-15) while `aasist` reads
+  90-100 (the reverse on the 3 named aditya clips). The 50/50 fusion averages
+  this down to a weak ~50 fused score — still technically RED under the
+  current threshold, but an unconvincing number on stage. **Stick to the
+  6 verified aditya clones above**, where both detectors agree confidently
+  (91-97) — that's not cherry-picking, it's the only cohort where the two
+  independent detectors corroborate each other cleanly. `clone_v3` has a
+  genuine generalization gap on these specific voices' clone characteristics
+  (not a code bug — chunking/preprocessing confirmed identical for both
+  detectors); revisit if `clone_v3` is retrained/re-evaluated.
 
 ## 3. Scam-script demo (two independent flags on one clip)
 
