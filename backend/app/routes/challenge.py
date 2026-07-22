@@ -25,20 +25,63 @@ _pending: dict[str, tuple[list[int], float]] = {}
 _TTL_S = 300
 _MAX_PENDING = 1000
 
-_WORD2DIGIT = {"zero": "0", "oh": "0", "o": "0", "one": "1", "two": "2", "to": "2",
-               "too": "2", "three": "3", "four": "4", "for": "4", "five": "5",
-               "six": "6", "seven": "7", "eight": "8", "ate": "8", "nine": "9"}
+# Digit-words across the languages a customer might read an OTP in. Whisper emits
+# Hindi as Devanagari (एक, दो, …) but sometimes romanizes or returns Arabic
+# numerals, so we cover all three. Multilingual OTP is only honest if the content
+# gate isn't English-only.
+_WORD2DIGIT = {
+    # English + common homophones/mishears
+    "zero": "0", "oh": "0", "o": "0", "one": "1", "won": "1", "two": "2", "to": "2",
+    "too": "2", "three": "3", "four": "4", "for": "4", "five": "5", "six": "6",
+    "seven": "7", "eight": "8", "ate": "8", "nine": "9",
+    # Hindi — Devanagari
+    "शून्य": "0", "सुन्य": "0", "एक": "1", "दो": "2", "तीन": "3", "चार": "4",
+    "पाँच": "5", "पांच": "5", "छह": "6", "छे": "6", "सात": "7", "आठ": "8",
+    "नौ": "9",
+    # Hindi — common romanizations
+    "shunya": "0", "sunya": "0", "ek": "1", "do": "2", "teen": "3", "char": "4",
+    "chaar": "4", "paanch": "5", "panch": "5", "chhe": "6", "che": "6", "chah": "6",
+    "saat": "7", "aath": "8", "nau": "9", "no": "9",
+}
+# Devanagari numerals ०–९ → ASCII, in case Whisper returns digits in that script.
+_DEVANAGARI_NUM = {c: str(i) for i, c in enumerate("०१२३४५६७८९")}
+
+
+# Tokenizer: ASCII digit | Devanagari numeral (U+0966–096F) | Latin word |
+# Devanagari word run (letters + combining matras, EXCLUDING the numeral block).
+# We can't use \w for Devanagari: vowel signs (matras, e.g. ी in तीन) are
+# combining marks that \w drops, which would split तीन into two unmatched tokens.
+_DIGIT_TOKEN = re.compile(r"[0-9]|[०-९]|[a-z]+|[ऀ-॥॰-ॿ]+")
 
 
 def _spoken_digits(text: str) -> str:
-    """Digits in spoken order: literal digits plus english digit-words."""
+    """Digits in spoken order across English/Hindi (numerals or words)."""
     out = []
-    for tok in re.findall(r"[0-9]|[a-zA-Z]+", text.lower()):
-        if tok.isdigit():
+    for tok in _DIGIT_TOKEN.findall(text.lower()):
+        if tok in _DEVANAGARI_NUM:            # before isdigit(): '३'.isdigit() is True
+            out.append(_DEVANAGARI_NUM[tok])
+        elif tok.isascii() and tok.isdigit():
             out.append(tok)
         elif tok in _WORD2DIGIT:
             out.append(_WORD2DIGIT[tok])
     return "".join(out)
+
+
+if __name__ == "__main__":
+    # Self-check: the OTP content gate must read digits across the languages a
+    # customer actually speaks — English words, Arabic numerals, Devanagari words,
+    # Devanagari numerals, romanized Hindi — tolerating surrounding chatter.
+    cases = {
+        "three six six two": "3662",
+        "the code is 3 6 6 2": "3662",
+        "तीन छह छह दो": "3662",
+        "मेरा कोड ३ ६ ६ २ है": "3662",
+        "teen chhe chhe do": "3662",
+    }
+    for text, want in cases.items():
+        got = _spoken_digits(text)
+        assert got == want, f"{text!r} -> {got!r}, want {want!r}"
+    print("challenge digit-parsing self-check ok (English + Hindi)")
 
 
 @router.get("/challenge")
