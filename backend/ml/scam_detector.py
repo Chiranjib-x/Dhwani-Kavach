@@ -1,11 +1,20 @@
 """Scam-script layer — catch the vishing where the voice is a *real human*.
 
-Pipeline: audio -> transcript (faster-whisper, optional) -> LLM (NVIDIA NIM /
-Nemotron) -> scam score + detected social-engineering tactics.
+Pipeline: audio -> transcript (faster-whisper, optional) -> LLM (NVIDIA NIM) ->
+scam score + detected social-engineering tactics.
 
 Everything degrades gracefully: no whisper, no API key, or any network error ->
 returns a neutral {score:0, tactics:[]} so the rest of the pipeline is never
 blocked. The deepfake detector keeps working regardless.
+
+Default model is a plain instruct model, not a reasoning one: reasoning models
+(e.g. nemotron-super-49b, -v1 AND -v1.5) put their answer in a separate
+"reasoning" field first and can leave message.content == null for many
+seconds/tokens -- incompatible with this layer's ~8s budget inside a real-time
+call. -v1 additionally hangs indefinitely server-side (retired endpoint,
+confirmed via curl/requests/urllib all timing out with zero bytes back) rather
+than erroring, silently eating the timeout every call. If you override
+NVIDIA_MODEL, pick a non-reasoning instruct model.
 
 Uses stdlib urllib for the LLM call (no new HTTP dependency).
 ponytail: whisper "base" + 8s LLM timeout; raise model size / timeout only if accuracy or latency demands it.
@@ -21,7 +30,7 @@ import numpy as np
 from ml.audio_utils import SAMPLE_RATE
 
 _BASE_URL = os.environ.get("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
-_MODEL = os.environ.get("NVIDIA_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1")
+_MODEL = os.environ.get("NVIDIA_MODEL", "meta/llama-3.1-8b-instruct")
 _KEY = os.environ.get("NVIDIA_API_KEY", "")
 
 _TACTICS = [
@@ -101,7 +110,7 @@ def score_transcript(text: str) -> dict:
         )
         with urllib.request.urlopen(req, timeout=8) as resp:
             body = json.loads(resp.read())
-        content = body["choices"][0]["message"]["content"]
+        content = body["choices"][0]["message"]["content"] or ""  # reasoning models can leave this null
         parsed = _extract_json(content)
         score = int(np.clip(parsed.get("score", 0), 0, 100))
         tactics = [t for t in parsed.get("tactics", []) if t in _TACTICS]

@@ -6,7 +6,7 @@ const BACKEND = import.meta.env.VITE_API_URL || "http://localhost:8000";
 type Phase = "idle" | "analyzing" | "done";
 type Verdict = "PROTECTED" | "REVIEW" | "CRITICAL";
 
-const LAYERS = ["AASIST", "Spectral Biometrics", "Breath Pattern", "Phase Coherence", "Active Liveness"];
+const LAYERS = ["Neural · XLS-R deepfake", "Spectral Biometrics", "Breath Pattern", "Phase Coherence", "Active Liveness"];
 
 const verdictColor = (v: Verdict) => (v === "PROTECTED" ? "#22C55E" : v === "CRITICAL" ? "#FF4D6D" : "#F59E0B");
 type Action = "MONITOR" | "CHALLENGE" | "BLOCK";
