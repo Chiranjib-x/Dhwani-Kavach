@@ -5,6 +5,24 @@ deepfake detector into an enterprise Voice Intelligence Platform.**
 
 Date: 2026-07-12 · Scope: full stack (ML, backend, streaming, frontend, deployment, security)
 
+> **Status update (2026-07-21):** this document is the *forward-looking target
+> architecture* — read it for direction, not current state (that's
+> [HANDOFF.md](HANDOFF.md)). Since it was written: **all 8 §16 "Must have (P0)"
+> items are done** — WS auth, Silero VAD gate, batched inference, `model_version`
+> in every verdict, safetensors (the `torch.load` RCE vector removed),
+> `LiveMonitor` wired to the WS, `sota_detector.py`/`pyaudio` cleanup, fixed
+> compose — with one substitution: §9's ONNX INT8 recommendation was tried and
+> measured **slower on CPU** than backbone truncation (quantization overhead
+> dominates on CPU; ONNX INT8 remains the right call only with a GPU target),
+> so truncation shipped instead. Of §16 "Should have (MVP)": L6 learned fusion
+> exists (opt-in, not yet default), an eval harness with a channel-robust A/B
+> grid is built (`backend/eval/`), and — direct validation of this doc's own
+> §2.3 thesis that "generalization is the known failure mode" — a public
+> SOTA checkpoint (XLSR-SLS, §4 candidate) was ported and A/B'd against the
+> deployed model and **lost on 4/5 real-world channels**, confirming §2.3's
+> point empirically rather than just citing it. Per-channel calibration,
+> Postgres/pgvector, and the timeline/evidence UI are still open.
+
 ---
 
 ## 0. Executive summary — the verdicts

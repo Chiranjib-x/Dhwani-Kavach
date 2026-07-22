@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhwani Kavach — Voice Verify</title>
+<style>
+  :root { --bg:#0b1020; --card:#151c33; --line:#26304f; --fg:#e8ecf6; --mut:#93a0c0;
+          --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; --accent:#5b8cff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         background:var(--bg); color:var(--fg); line-height:1.5; }
+  .wrap { max-width:560px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:22px; margin:6px 0 2px; }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  label { font-size:13px; color:var(--mut); display:block; margin-bottom:6px; }
+  input[type=text] { width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+        background:#0e1428; color:var(--fg); font-size:15px; }
+  .tabs { display:flex; gap:8px; margin:14px 0; }
+  .tab { flex:1; padding:10px; text-align:center; border-radius:10px; border:1px solid var(--line);
+        background:#0e1428; color:var(--mut); cursor:pointer; font-weight:600; }
+  .tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.primary { width:100%; padding:14px; border:0; border-radius:12px; background:var(--accent);
+        color:#fff; font-size:16px; font-weight:700; cursor:pointer; }
+  button.primary:disabled { opacity:.5; cursor:not-allowed; }
+  button.ghost { background:#0e1428; color:var(--fg); border:1px solid var(--line); }
+  .challenge { font-size:40px; letter-spacing:10px; text-align:center; font-weight:800;
+        padding:14px; background:#0e1428; border-radius:12px; margin:6px 0 14px; }
+  .meter-wrap { height:10px; background:#0e1428; border-radius:6px; overflow:hidden; margin:12px 0; }
+  #meter { height:100%; width:0%; background:linear-gradient(90deg,var(--ok),var(--warn)); transition:width .05s; }
+  .banner { padding:12px 14px; border-radius:10px; font-size:14px; margin:10px 0; display:none; }
+  .banner.show { display:block; }
+  .banner.error { background:#3b1520; border:1px solid var(--bad); color:#ffb4b4; }
+  .banner.info { background:#122240; border:1px solid var(--accent); color:#bcd2ff; }
+  .gates { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+  .gate { background:#0e1428; border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .gate .name { font-size:12px; color:var(--mut); }
+  .gate .val { font-size:13px; font-weight:600; margin-top:4px; }
+  .gate.pass { border-color:var(--ok); } .gate.pass .val { color:var(--ok); }
+  .gate.fail { border-color:var(--bad); } .gate.fail .val { color:var(--bad); }
+  .verdict { text-align:center; font-size:22px; font-weight:800; padding:16px; border-radius:12px; margin-top:6px; display:none; }
+  .verdict.show { display:block; }
+  .verdict.ACCEPT,.verdict.ENROLLED,.verdict.ENROLL_SLOT_OK { background:#0f2c1c; color:var(--ok); border:1px solid var(--ok); }
+  .verdict.REJECT,.verdict.LOCKED { background:#2c1015; color:var(--bad); border:1px solid var(--bad); }
+  .verdict.RETRY,.verdict.STEP_UP { background:#2c2410; color:var(--warn); border:1px solid var(--warn); }
+  .muted { color:var(--mut); font-size:12px; }
+  .hide { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡️ Dhwani Kavach</h1>
+  <div class="sub">Voice verification — proves it's <b>you</b>, live, right now.</div>
+
+  <div id="waking" class="banner info show">Waking up the engine… this can take up to a minute on first load.</div>
+
+  <div class="card">
+    <label for="uid">Account / user id</label>
+    <input id="uid" type="text" placeholder="e.g. chris" autocomplete="off">
+    <div class="tabs">
+      <div class="tab active" data-mode="verify">Verify</div>
+      <div class="tab" data-mode="enroll">Enroll</div>
+    </div>
+
+    <div id="prompt-area"></div>
+
+    <div id="muted-warn" class="banner error" hidden>We can't hear you — is your microphone muted?</div>
+    <div class="meter-wrap"><div id="meter"></div></div>
+
+    <button id="go" class="primary" disabled>Start</button>
+    <button id="stopBtn" class="primary ghost hide" style="margin-top:8px;">Stop</button>
+
+    <div id="banner" class="banner"></div>
+  </div>
+
+  <div id="gates" class="gates hide">
+    <div class="gate" data-g="quality"><div class="name">1 · Quality</div><div class="val">—</div></div>
+    <div class="gate" data-g="content"><div class="name">2 · Phrase</div><div class="val">—</div></div>
+    <div class="gate" data-g="liveness"><div class="name">3 · Liveness</div><div class="val">—</div></div>
+    <div class="gate" data-g="speaker"><div class="name">4 · Voice match</div><div class="val">—</div></div>
+  </div>
+  <div id="verdict" class="verdict"></div>
+  <div class="muted" id="detail"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let mode = "verify", session = null, enrollSlot = 0, enrollPrompts = [];
+
+const MIME = ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"]
+  .find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+
+const MIC_ERRORS = {
+  NotAllowedError:"Microphone access is blocked. Click the lock icon in the address bar → allow the microphone, then reload.",
+  NotFoundError:"No microphone found. Plug one in or check system sound settings, then press Start.",
+  NotReadableError:"Your microphone is in use or not responding. Close apps using the mic (Zoom, Meet, Teams) or choose another mic, then Start.",
+  SecurityError:"This page needs a secure (https) link — open the https URL.",
+};
+// Server reason-code -> user-facing copy (§6). Server sends codes, never prose.
+const REASON_COPY = {
+  NO_AUDIO:"We didn't get any audio — press Start and speak.",
+  TOO_SHORT:"That was too short — read the whole code.",
+  TOO_LONG:"That was too long — just read the digits and stop.",
+  TOO_QUIET:"You're too quiet — move the mic closer and speak up.",
+  CLIPPING:"The mic is overloading — move it a little further from your mouth.",
+  NOISY:"Too much background noise — move somewhere quieter and retry.",
+  NO_SPEECH:"We didn't catch enough speech — press Start and read the whole code.",
+  WRONG_PHRASE:"That didn't match the code — read the new digits shown above.",
+  SPOOF_SUSPECTED:"This didn't sound like a live human voice.",
+  VOICE_MISMATCH:"This voice doesn't match the enrolled customer.",
+  BORDERLINE_VOICE:"We couldn't be sure — sending you to an extra check.",
+  SESSION_EXPIRED:"That took too long — starting a fresh code.",
+  SESSION_USED:"That session is already finished — starting fresh.",
+  TOO_MANY_ATTEMPTS:"Too many tries — starting over.",
+  NOT_ENROLLED:"This id isn't enrolled yet — switch to Enroll first.",
+  ALREADY_ENROLLED:"This id is already enrolled.",
+  ENROLL_INCONSISTENT:"Those clips didn't sound like the same voice — please re-record.",
+  LOCKED:"Too many failed attempts — try again in 15 minutes or contact the bank.",
+  BAD_AUDIO_FORMAT:"We couldn't read that recording — please retry.",
+  BAD_REQUEST:"Something went wrong — please retry.",
+};
+
+function banner(msg, kind){ const b=$("banner"); b.textContent=msg; b.className="banner show "+kind; }
+function clearBanner(){ $("banner").className="banner"; }
+
+// ---- health gate ----
+async function pollHealth(){
+  try{ const h=await (await fetch("/v2/health")).json();
+    if(h.models_loaded){ $("waking").classList.remove("show"); $("go").disabled=false; return; }
+  }catch(e){}
+  setTimeout(pollHealth, 3000);
+}
+pollHealth();
+
+// ---- tabs ----
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active"); mode=t.dataset.mode; session=null; enrollSlot=0;
+  $("gates").classList.add("hide"); $("verdict").className="verdict"; $("detail").textContent="";
+  $("prompt-area").innerHTML=""; clearBanner();
+  $("go").textContent = mode==="enroll" ? "Start enrollment" : "Start verification";
+});
+
+// ---- mic + recorder ----
+let stream, rec, chunks=[], audioCtx, analyser, meterRAF;
+async function getMic(){
+  try{ return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
+  catch(e){ if(e.name==="OverconstrainedError") return navigator.mediaDevices.getUserMedia({audio:true});
+            banner(MIC_ERRORS[e.name]||("Mic error: "+e.name),"error"); throw e; }
+}
+function startMeter(stream){
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  analyser=audioCtx.createAnalyser(); analyser.fftSize=2048;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  const buf=new Float32Array(analyser.fftSize); let silentSince=performance.now();
+  (function tick(){ analyser.getFloatTimeDomainData(buf);
+    let s=0; for(const v of buf) s+=v*v; const rms=Math.sqrt(s/buf.length);
+    $("meter").style.width=Math.min(100,rms*800)+"%";
+    if(rms>0.001) silentSince=performance.now();
+    $("muted-warn").hidden=(performance.now()-silentSince)<1500;
+    meterRAF=requestAnimationFrame(tick);
+  })();
+}
+async function record(maxMs=9000){
+  stream=await getMic();
+  stream.getTracks()[0].onended=()=>banner("Microphone disconnected — please retry.","error");
+  startMeter(stream);
+  $("stopBtn").classList.remove("hide");
+  return new Promise(res=>{
+    chunks=[]; rec=new MediaRecorder(stream, MIME?{mimeType:MIME}:undefined);
+    rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=()=>{ cancelAnimationFrame(meterRAF); audioCtx.close();
+      stream.getTracks().forEach(t=>t.stop()); $("meter").style.width="0%"; $("stopBtn").classList.add("hide");
+      res(new Blob(chunks,{type:rec.mimeType})); };
+    rec.start(); setTimeout(()=>rec.state==="recording"&&rec.stop(), maxMs);
+    $("stopBtn").onclick=()=>rec.state==="recording"&&rec.stop();
+  });
+}
+async function submit(sessionId, slot, blob){
+  const fd=new FormData(); fd.append("session_id",sessionId); fd.append("slot",slot);
+  fd.append("file", blob, "clip."+(blob.type.includes("mp4")?"mp4":"webm"));
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),30000);
+  try{ const r=await fetch("/v2/audio",{method:"POST",body:fd,signal:ctl.signal}); return await r.json(); }
+  catch{ banner("Upload failed — check your connection and retry. Your recording was not counted.","error"); return null; }
+  finally{ clearTimeout(to); }
+}
+
+// ---- gate cards / verdict rendering ----
+function renderGates(scores){
+  $("gates").classList.remove("hide");
+  const fmt={
+    quality:s=>s?`SNR ${s.snr_db}dB · ${s.speech_sec}s`:"—",
+    content:s=>s?`heard ${s.heard||"—"}`:"—",
+    liveness:s=>s?`live ${Math.round((s.bonafide_p||0)*100)}%`:"—",
+    speaker:s=>s?`match ${s.cosine}`:"—",
+  };
+  document.querySelectorAll(".gate").forEach(g=>{
+    const k=g.dataset.g, s=scores[k];
+    g.querySelector(".val").textContent=fmt[k](s);
+    g.classList.remove("pass","fail");
+    if(s && "ok" in s) g.classList.add(s.ok?"pass":"fail");
+  });
+}
+function showVerdict(v){
+  const el=$("verdict"); el.textContent=v; el.className="verdict show "+v;
+}
+
+// ---- flows ----
+async function startSession(){
+  const uid=$("uid").value.trim();
+  if(!uid){ banner("Enter an account / user id first.","error"); return null; }
+  const r=await (await fetch("/v2/session",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({user_id:uid, mode})})).json();
+  if(r.error){ banner(REASON_COPY[r.error]||r.error,"error"); return null; }
+  return r;
+}
+
+async function runVerify(){
+  clearBanner(); $("verdict").className="verdict";
+  if(!session){ session=await startSession(); if(!session) return; }
+  $("prompt-area").innerHTML=`<label>Read these digits aloud:</label><div class="challenge">${session.challenge.split("").join(" ")}</div>`;
+  const blob=await record();
+  banner("Checking…","info");
+  const v=await submit(session.session_id, 0, blob); if(!v) return;
+  clearBanner(); renderGates(v.scores); showVerdict(v.verdict);
+  $("detail").textContent=(v.reasons||[]).map(c=>REASON_COPY[c]||c).join("  ");
+  if(v.verdict==="RETRY"){
+    if(v.new_challenge) session.challenge=v.new_challenge;      // rotated nonce
+    else { session=null; }                                     // session-level: restart
+    banner((v.reasons||[]).map(c=>REASON_COPY[c]||c).join(" "), "error");
+  } else { session=null; }                                     // terminal -> fresh session next time
+}
+
+async function runEnroll(){
+  clearBanner(); $("verdict").className="verdict";
+  if(!session){ session=await startSession(); if(!session) return; enrollSlot=0; enrollPrompts=session.prompts; }
+  $("prompt-area").innerHTML=`<label>Clip ${enrollSlot+1} of ${enrollPrompts.length} — read this aloud:</label>
+     <div class="card" style="margin:6px 0;">${enrollPrompts[enrollSlot]}</div>`;
+  const blob=await record();
+  banner("Checking…","info");
+  const v=await submit(session.session_id, enrollSlot, blob); if(!v) return;
+  clearBanner(); renderGates(v.scores); showVerdict(v.verdict);
+  $("detail").textContent=(v.reasons||[]).map(c=>REASON_COPY[c]||c).join("  ");
+  if(v.verdict==="ENROLL_SLOT_OK"){ enrollSlot++; banner(`Clip ${enrollSlot} saved — record the next.`,"info"); }
+  else if(v.verdict==="ENROLLED"){ banner("Enrolled! You can now Verify.","info"); session=null; }
+  else if(v.verdict==="RETRY"){
+    if(v.redo_slot!=null){ enrollSlot=v.redo_slot; banner("Re-record this clip — it didn't match the others.","error"); }
+    else banner((v.reasons||[]).map(c=>REASON_COPY[c]||c).join(" "),"error");
+  }
+}
+
+$("go").onclick=()=> mode==="enroll" ? runEnroll() : runVerify();
+$("go").textContent="Start verification";
+</script>
+</body>
+</html>

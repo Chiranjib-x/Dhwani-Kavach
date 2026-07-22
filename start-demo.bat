@@ -10,8 +10,8 @@ REM which is the usual reason the backend won't start.
 set "PYEXE=python"
 if exist "%~dp0.venv\Scripts\python.exe" set "PYEXE=%~dp0.venv\Scripts\python.exe"
 
-echo Starting backend on http://localhost:8000 (using %PYEXE%) ...
-start "Dhwani Backend" cmd /k ""%PYEXE%" -m uvicorn app.main:app --app-dir backend --port 8000"
+echo Starting backend (v2 voice verification) on http://localhost:8000 (using %PYEXE%) ...
+start "Dhwani Backend" cmd /k ""%PYEXE%" -m uvicorn verify_app.main:app --app-dir backend --port 8000"
 
 echo Starting frontend on http://localhost:8080 ...
 start "Dhwani Frontend" cmd /k "cd frontend && npm run dev"

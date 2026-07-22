@@ -1,0 +1,17 @@
+# Dhwani-Kavach v2 (voiceprint verification) — additive deps on top of the
+# existing backend venv (Python 3.11, torch 2.3.0+cpu). Install with:
+#   ./.venv/Scripts/python.exe -m pip install -r backend/requirements-verify.txt
+# Shared pins match backend/requirements.txt so nothing is downgraded.
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+torch==2.3.0
+torchaudio==2.3.0
+speechbrain==1.0.2
+faster-whisper==1.0.3
+librosa==0.10.2
+soundfile==0.12.1
+numpy==1.26.4
+onnxruntime==1.27.0
+imageio-ffmpeg==0.5.1
+python-multipart==0.0.9
+huggingface_hub==0.24.6
