@@ -97,13 +97,33 @@ inclusion. A cheap, CPU-based, on-prem, voice-only layer that scales across
 millions of accounts **with no new customer hardware** is the only economics that
 work here. **Position it as protecting the financial-inclusion mission.**
 
+## Placement — what the shield can and can't see (answer this before it's asked)
+
+The shield sits on the **bank's own channel** (IVR / helpline / agent / Bank
+Mitra). It does **NOT** see the scammer's direct call to the villager's personal
+phone — that call never touches the bank's network.
+
+So what does it catch? **The moment the fraud reaches the bank's money.** The
+scammer coaches the villager offline; then the villager **contacts the bank** —
+to share the OTP, "update KYC", or move money to a "safe account" — and *that*
+bank-side call is where the shield hears the scam in the customer's own words and
+intervenes. This is the highest-loss vector precisely because the bank is the one
+about to move the money.
+
+To intercept the scammer's **direct** call to the customer, you'd deploy at the
+**telecom-operator layer** (protect every subscriber's calls) or on the
+**customer's device** — a real, larger future direction, but a different customer
+than a single bank's IVR. Name this honestly; it reads as rigour, and it's the
+first question a bank panel will ask.
+
 ## Honest limits (say them — they build trust)
 
+- **Placement:** catches the fraud when it reaches the bank's channel, not the
+  scammer's direct call to the customer (see above; telco/device deployment is the
+  path to the latter).
 - **Tribal low-resource dialects** are a real STT gap; deepfake detection still
   works, the coercion layer degrades until Bhashini/fine-tuning closes it.
 - **AePS / fingerprint fraud is out of scope** (voice product) — though we protect
-  the *call* that social-engineers the victim into it.
-- We reach fraud crossing a **voice channel the bank can tap** (IVR/BC call); pure
-  in-person or SMS-only fraud isn't covered.
+  the *bank call* that social-engineers the victim into it.
 - Impact depends on **integration with the BC/IVR rails** — partners matter as
   much as the tech.
