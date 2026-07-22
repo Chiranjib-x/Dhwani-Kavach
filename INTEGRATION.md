@@ -130,11 +130,12 @@ None of these touch the detection engine — they wrap it.
    biometrics; integrates via a standard media fork + REST/WS API.
 5. **Explainable & tunable** — 5-layer breakdown per verdict, thresholds set to
    the bank's risk appetite; gives audit and compliance a defensible trail.
-6. **Accuracy** — ~5% EER on modern deepfakes (wav2vec2 SSL detector), trained
-   on global spoof datasets + real Indian voices to cut false alarms on
-   genuine customers.
-7. **Lightweight to run** — single stateless container, scales horizontally
-   with call volume, CPU-only viable.
+6. **Accuracy** — 99.2% accuracy / EER 1.6% measured on a held-out set of real
+   voices + commercial clones (dual XLS-R detectors, calibrated on labelled
+   data); trained on global spoof datasets + real Indian voices to cut false
+   alarms on genuine customers.
+7. **Lightweight to run** — single container, CPU-only viable; horizontal
+   scale-out is on the hardening roadmap (per-call state is in-process today).
 
 ---
 

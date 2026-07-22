@@ -128,7 +128,7 @@ Judges/bankers score on these — make sure each has an answer:
 
 | Buying criterion | Your answer |
 |------------------|-------------|
-| Accuracy **and low false positives** | ~5% EER on modern fakes; trained on real Indian voices to protect genuine customers |
+| Accuracy **and low false positives** | 99.2% acc / EER 1.6% measured on our own held-out voices + commercial clones; two independent detectors so one model's blind spot doesn't clear a fraud |
 | Works on **our** infrastructure | On-prem Docker, telephony-grade (#1), no audio leaves the bank |
 | Compliance | RBI data-localisation, DPDP Act posture, audit trail, no-audio-retention, governance (#4) |
 | Catches **real** fraud | Scam-script LLM catches human scammers; campaign detection (#3) |
