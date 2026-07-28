@@ -288,6 +288,12 @@ function Index() {
               href="/range" cta="Open the range" delay={0}
             />
             <DemoCard
+              tag="BANK SECURITY" tagColor="#38BDF8" featured
+              title="Voice-trust layer (5 internal)"
+              desc="Beyond the contact centre: defend the bank ITSELF — treasury callbacks, the IT helpdesk, onboarding, continuous auth, and vulnerable-customer safeguarding."
+              href="/voice-trust" cta="Open the hub" delay={0.03}
+            />
+            <DemoCard
               tag="INTEGRATION" tagColor="#38BDF8"
               title="Live Call — SIPREC-style"
               desc="Two tabs: customer + bank agent. The agent side taps the call audio and the verdict lands on their screen mid-call — exactly how it drops into a contact centre."

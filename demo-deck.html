@@ -39,6 +39,14 @@
   .center{align-items:center;text-align:center}
   .center ul{justify-items:center;text-align:left}
   .pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:clamp(11px,1.2vw,16px);margin-top:8px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;font-weight:500}
+  td.us{color:var(--cyan);font-weight:600}
+  .yes{color:var(--ok)} .no{color:var(--threat)} .mid{color:var(--warn)}
+  .trl{display:flex;gap:6px;margin:12px 0}
+  .trl span{flex:1;text-align:center;font-family:var(--mono);font-size:13px;padding:8px 0;border:1px solid var(--line);border-radius:8px;color:var(--muted)}
+  .trl span.on{border-color:var(--cyan);color:var(--cyan);background:rgba(94,234,212,.08);font-weight:700}
   /* demo-specific */
   .demo-badge{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;
     color:#08090C;background:var(--cyan);border-radius:999px;padding:8px 18px;font-weight:700;letter-spacing:.04em;margin-bottom:18px;width:fit-content}
@@ -281,6 +289,49 @@
     <div class="foot"><span>DHWANI-KAVACH</span><span>DECISION</span></div>
   </section>
 
+  <!-- 11b ARCHITECTURE -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; under the hood</div>
+    <h2>A layered, fail-safe pipeline &mdash; two neural detectors lead</h2>
+    <div class="flow" style="margin-bottom:14px">
+      <span class="node">Live audio</span><span class="arrow">&rarr;</span>
+      <span class="node">4s window · 2s hop · Silero VAD</span><span class="arrow">&rarr;</span>
+      <span class="node">quality gate</span><span class="arrow">&rarr;</span>
+      <span class="node acc">two neural detectors</span><span class="arrow">&rarr;</span>
+      <span class="node">Platt calibrate → EWMA + hysteresis</span>
+    </div>
+    <table>
+      <tr><th>Layer</th><th>Weight</th><th>What it is</th></tr>
+      <tr><td class="us">Neural &mdash; W2VAASIST · XLS-R 300M</td><td>0.50</td><td>codec / artifact-specialist deepfake detector</td></tr>
+      <tr><td class="us">Neural &mdash; clone_v3 · XLS-R</td><td>0.50</td><td>fine-tuned on modern commercial clones (ElevenLabs…)</td></tr>
+      <tr><td>MFCC · breath · phase · liveness</td><td>0 · evidence</td><td>acoustic heuristics — shown, but zero weight (measured near-noise)</td></tr>
+    </table>
+    <div class="grid3" style="margin-top:16px">
+      <div class="card"><h3>Real-time under load</h3><p>Only the newest window is scored; inference off the event loop &mdash; a slow CPU can&rsquo;t stall or flood the stream.</p></div>
+      <div class="card"><h3>Fail-safe composition</h3><p>STT, the LLM, or a model file missing &rarr; that layer returns neutral; the core verdict still ships.</p></div>
+      <div class="card"><h3>Explainable</h3><p>0&ndash;100 score, per-layer breakdown, calibrated bands (GREEN&lt;40 · AMBER · RED&ge;70), a plain-English reason.</p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>ARCHITECTURE</span></div>
+  </section>
+
+  <!-- 11c MODEL & GENERALIZATION -->
+  <section class="slide">
+    <div class="kicker">Deep dive &middot; the generalization lesson</div>
+    <h2>Why one detector wasn&rsquo;t enough</h2>
+    <ul style="margin-bottom:14px">
+      <li><span class="big">v1</span> was a single wav2vec2: <b>&lt;0.5% EER</b> on the dev set &mdash; looked great.</li>
+      <li>On <span class="big">real</span> ElevenLabs clones it was <span class="no">near-random: 40% EER, AUC 0.63</span> &mdash; a textbook out-of-domain failure (M&uuml;ller et al., Interspeech 2022: SSL detectors degrade 200&ndash;1000% cross-domain).</li>
+      <li>Fix: <span class="big">two independent XLS-R detectors</span> &mdash; a codec/artifact specialist + a clone specialist, whose failure modes anti-correlate &mdash; then calibrated fusion.</li>
+    </ul>
+    <table style="max-width:840px">
+      <tr><th>On our labeled real-vs-clone set (122 clips)</th><th>EER</th><th>AUC</th></tr>
+      <tr><td>v1 &mdash; single wav2vec2 (measured)</td><td class="no">40%</td><td class="no">0.63</td></tr>
+      <tr><td class="us">current &mdash; dual XLS-R + calibrated fusion</td><td class="us">1.6%</td><td class="us">0.999</td></tr>
+    </table>
+    <p class="lead" style="margin-top:16px;color:var(--cyan)">The lesson that drives the design: never trust one detector&rsquo;s leaderboard number.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>MODEL &amp; GENERALIZATION</span></div>
+  </section>
+
   <!-- 12 THE REST -->
   <section class="slide">
     <div class="kicker">And the rest &mdash; it&rsquo;s a product, not a notebook</div>
@@ -294,6 +345,62 @@
       <div class="card"><h3>Attack Range</h3><p>A mock bank + a live attacker + a shield ON/OFF toggle &mdash; watch the money leave, then watch it stop.</p></div>
     </div>
     <div class="foot"><span>DHWANI-KAVACH</span><span>THE PRODUCT</span></div>
+  </section>
+
+  <!-- 12b VALUE TO THE BANK -->
+  <section class="slide">
+    <div class="kicker">Why a bank buys it</div>
+    <h2>More than a detector &mdash; the business case</h2>
+    <div class="grid2">
+      <div><h3>It hardens the security you already own</h3><ul>
+        <li><span class="big">Guards the unguarded channel</span> &mdash; voice, where biometrics + caller-ID + OTP all fail.</li>
+        <li><span class="big">Defense-in-depth.</span> In front of voice biometrics (a live human, not a clone), backstops OTP (the coerced customer), ignores a spoofed caller-ID.</li>
+        <li><span class="big">Catches APP-fraud &mdash; nothing else does.</span> The coerced real customer: your largest vishing loss, invisible to every other control.</li>
+        <li><span class="big">Real-time &amp; ring-aware.</span> Loss <i>prevented</i> mid-call, not disputed next-day; one fraud voice across many accounts caught as a ring.</li>
+      </ul></div>
+      <div><h3>It pays for itself</h3><ul>
+        <li><span class="big">Cost.</span> Fewer losses &amp; reimbursements, less manual review, shorter calls (voice-auth replaces slow security questions), fewer false declines.</li>
+        <li><span class="big">Regulator.</span> RBI Model-Risk-Management built in, on-prem data-localisation, an append-only audit trail &amp; explainable verdicts.</li>
+        <li><span class="big">A data moat.</span> Every call adds a voiceprint &mdash; the blocklist gets smarter on <i>your</i> data a rival can&rsquo;t copy.</li>
+        <li><span class="big">Strategy.</span> Makes cheap phone / IVR banking safe to scale, protects rural &amp; financial-inclusion customers, and the reputation of the bank that isn&rsquo;t cloned.</li>
+      </ul></div>
+    </div>
+    <p class="lead" style="margin-top:16px;color:var(--cyan)">Stops the loss you can&rsquo;t see today, makes the controls you own harder to beat, and turns every call into fraud intelligence.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>VALUE TO THE BANK</span></div>
+  </section>
+
+  <!-- 12c BEYOND THE CONTACT CENTRE -->
+  <section class="slide">
+    <div class="kicker">Beyond the contact centre</div>
+    <h2>Not a contact-centre tool &mdash; a voice-trust layer for the whole bank</h2>
+    <p class="lead" style="margin-bottom:18px">A bank runs dozens of voice channels, and the biggest, least-defended threats now live on the <span class="big">internal</span> ones. The same engine defends the bank <span class="big">itself</span>.</p>
+    <div class="grid3">
+      <div class="card"><h3 style="color:var(--threat)">Treasury callback</h3><p>A cloned CFO can&rsquo;t authorise a wire &mdash; voiceprint + synthetic-voice on the callback. Protects the <b>bank&rsquo;s own money</b> (the Arup US$25M case). <span class="pill">/treasury</span></p></div>
+      <div class="card"><h3 style="color:var(--warn)">Helpdesk firewall</h3><p>The &ldquo;employee&rdquo; resetting MFA must pass voiceprint + liveness. Shuts the <b>#1 breach vector</b> &mdash; helpdesk social engineering. <span class="pill">/helpdesk</span></p></div>
+      <div class="card"><h3 style="color:var(--info)">Onboarding screen</h3><p>Block deepfake video-KYC, enrol a <b>lifelong voiceprint</b>, and catch mule rings by voiceprint reuse. <span class="pill">/onboarding</span></p></div>
+      <div class="card"><h3 style="color:var(--cyan)">Continuous auth</h3><p>Verify the <b>whole call</b>, not just the gate &mdash; and flag the coached mid-call hand-off. A primitive that doesn&rsquo;t exist today. <span class="pill">/continuous</span></p></div>
+      <div class="card"><h3 style="color:var(--violet)">Safeguarding</h3><p>Hear elder abuse / coercion / distress and route to a <b>welfare check</b>, not a cold block. A rising regulatory duty. <span class="pill">/safeguarding</span></p></div>
+      <div class="card" style="border-color:rgba(94,234,212,.3)"><h3>Deploy once, defend all</h3><p>Voiceprints, liveness &amp; intent are a <b>trust fabric</b> &mdash; the same ECAPA + deepfake + APP-fraud stack, turned in every direction. <span class="pill">/voice-trust</span></p></div>
+    </div>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>VOICE-TRUST LAYER</span></div>
+  </section>
+
+  <!-- 12d BENCHMARKS -->
+  <section class="slide">
+    <div class="kicker">Where we stand</div>
+    <h2>Detector accuracy is table-stakes &mdash; the gap is everything else</h2>
+    <table>
+      <tr><th>Capability</th><th>Academic (AASIST/RawNet2)</th><th>Commercial cloud</th><th>Dhwani-Kavach</th></tr>
+      <tr><td>Real-clone set (labeled, 122)</td><td>not reported</td><td>not reported</td><td class="us">AUC 0.999 · EER 1.6%</td></tr>
+      <tr><td>Modern clone clips</td><td class="no">degrades (20&ndash;40%)</td><td class="mid">good</td><td class="us">100% flagged</td></tr>
+      <tr><td>Human scam / coerced customer</td><td class="no">&times;</td><td class="no">&times;</td><td class="yes">&#10003; APP-fraud LLM</td></tr>
+      <tr><td>Loudspeaker-replay channel</td><td class="no">&times;</td><td class="no">&times;</td><td class="yes">&#10003; channel gate</td></tr>
+      <tr><td>Multilingual (Hindi/regional)</td><td class="no">&times;</td><td class="mid">some</td><td class="yes">&#10003; Whisper + Bhashini</td></tr>
+      <tr><td>Deployment</td><td class="no">research code</td><td class="no">cloud API</td><td class="yes">on-prem Docker</td></tr>
+      <tr><td>Governance &amp; audit</td><td class="no">&times;</td><td class="mid">limited</td><td class="yes">&#10003; built-in</td></tr>
+    </table>
+    <p class="muted" style="margin-top:12px;font-size:13px">Academic SOTA wins ASVspoof but generalises poorly cross-dataset. We optimise for the real deployment, not the leaderboard.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>BENCHMARKS</span></div>
   </section>
 
   <!-- 13 INTEGRATION -->
@@ -332,6 +439,29 @@
     <div class="foot"><span>DHWANI-KAVACH</span><span>FINANCIAL INCLUSION</span></div>
   </section>
 
+  <!-- 13c ROADMAP & TRL -->
+  <section class="slide">
+    <div class="kicker">Maturity &amp; roadmap</div>
+    <h2>TRL 5&ndash;6 today &mdash; a clear path to a bank pilot</h2>
+    <div class="trl">
+      <span>1</span><span>2</span><span>3</span><span>4</span><span class="on">5</span><span class="on">6</span><span>7</span><span>8</span><span>9</span>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <div><h3 style="color:var(--ok)">Where it is (TRL 5&ndash;6)</h3><ul>
+        <li>Full working prototype, end-to-end, real-time &mdash; everything in this deck runs live.</li>
+        <li>Validated on realistic data: own Indian voices + commercial clones (99.2% / EER 1.6% / AUC 0.999).</li>
+        <li>Deployable artifact: on-prem Docker, one JSON verdict, governance &amp; metrics.</li>
+      </ul></div>
+      <div><h3 style="color:var(--warn)">Path to TRL 7&ndash;8</h3><ul>
+        <li><b>Shadow-mode pilot</b> on a bank queue &rarr; operational validation, risk-free.</li>
+        <li>Calibrate thresholds on real traffic; measure live TPR/FPR.</li>
+        <li>Channel-robust model to production; SIPREC adapter + mTLS hardening.</li>
+      </ul></div>
+    </div>
+    <p class="muted" style="margin-top:14px;font-size:13px">The retrain + red-team loop is the moat: what evades feeds the next model &mdash; the defense compounds with use.</p>
+    <div class="foot"><span>DHWANI-KAVACH</span><span>ROADMAP &amp; TRL</span></div>
+  </section>
+
   <!-- 14 HONEST -->
   <section class="slide">
     <div class="kicker">Intellectual honesty</div>
@@ -363,7 +493,7 @@
 
 </div>
 
-<div class="nav" id="nav">1 / 15</div>
+<div class="nav" id="nav">1 / 22</div>
 <div class="hint">&larr; &rarr; / space to navigate &middot; F fullscreen &middot; Ctrl+P &rarr; PDF</div>
 
 <script>
